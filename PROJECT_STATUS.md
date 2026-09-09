@@ -32,7 +32,9 @@ The Codex repository inspection recorded the following verified checkpoint:
 ## Current progress
 
 - Initial repository inspection is complete.
-- `PROJECT_STATUS.md` and `AGENTS.md` are present; review and commit are
+- `PROJECT_STATUS.md` and `AGENTS.md` have been reviewed and committed.
+- A proposed background-event architecture is documented in
+  [ARCHITECTURE.md](ARCHITECTURE.md); review and commit of that proposal are
   pending.
 - Application development has not started.
 - Other foundation documents still need reconciliation and integration.
@@ -43,7 +45,8 @@ The following are unresolved decisions, not approved choices:
 
 - Supported package versions and local runtime compatibility.
 - Next.js router and development tooling.
-- Reliable background-event processing.
+- Production event-processing tooling and architecture. Vercel Workflows is a
+  documented candidate, not an approved production choice.
 
 ## Application setup acceptance criteria — proposed
 
