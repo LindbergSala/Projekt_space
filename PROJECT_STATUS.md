@@ -34,27 +34,33 @@ The Codex repository inspection recorded the following verified checkpoint:
 - Initial repository inspection is complete.
 - `PROJECT_STATUS.md` and `AGENTS.md` have been reviewed and committed.
 - A proposed background-event architecture is documented in
-  [ARCHITECTURE.md](ARCHITECTURE.md); review and commit of that proposal are
-  pending.
-- Application development has not started.
+  [ARCHITECTURE.md](ARCHITECTURE.md) and has been committed.
+- The initial application foundation is present and has passed automated lint,
+  build, and local HTTP checks. Browser viewport review remains pending; review
+  and commit of the application foundation are pending.
 - Other foundation documents still need reconciliation and integration.
 
-## Open setup decisions
+## Application foundation — 2026-09-09
+
+- The application was set up manually in the existing repository with the
+  Next.js App Router and JavaScript application files.
+- The project requires Node.js `24.x`, uses npm with `package-lock.json`, plain
+  CSS, and ESLint.
+- Direct dependencies are pinned to Next.js `16.3.4`, React `19.2.7`, and React
+  DOM `19.2.7`.
+- Direct development dependencies are pinned to ESLint `9.39.4` and
+  `eslint-config-next` `16.3.4`.
+- `npm run lint` and `npm run build` passed. Both the development server and
+  the built production server returned HTTP 200 for the homepage with the
+  expected heading and text.
+- Browser verification at narrow mobile and wider-screen viewports is pending
+  because no browser was available to the Codex inspection.
+- This foundation does not require a database connection. Authentication,
+  database integration, gameplay, and background jobs remain separate tasks.
+
+## Open decisions
 
 The following are unresolved decisions, not approved choices:
 
-- Supported package versions and local runtime compatibility.
-- Next.js router and development tooling.
 - Production event-processing tooling and architecture. Vercel Workflows is a
   documented candidate, not an approved production choice.
-
-## Application setup acceptance criteria — proposed
-
-- Router, package versions, and runtime compatibility are established before
-  scaffolding.
-- The eventual setup task has an explicit file scope and real validation
-  commands.
-- Its documented start procedure works and the initial page renders.
-- Authentication, database integration, and gameplay are separate tasks.
-- Future interface work includes browser verification at a narrow mobile
-  viewport and a wider-screen viewport.
