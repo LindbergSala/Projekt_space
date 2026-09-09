@@ -37,6 +37,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   [ARCHITECTURE.md](ARCHITECTURE.md) and has been committed.
 - The initial application foundation has been reviewed, verified, and committed
   as `4986a3e chore: initialize next.js application`.
+- The dependency-aware delivery order is documented in
+  [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md); review and commit are pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
