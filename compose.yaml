@@ -1,0 +1,26 @@
+name: projekt-space-local
+
+services:
+  postgres:
+    image: postgres:18.6-trixie
+    environment:
+      POSTGRES_DB: projekt_space_dev
+      POSTGRES_USER: projekt_space_admin
+      POSTGRES_PASSWORD: ${PROJEKT_SPACE_POSTGRES_PASSWORD:?PROJEKT_SPACE_POSTGRES_PASSWORD is required}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready --username "$${POSTGRES_USER}" --dbname "$${POSTGRES_DB}"',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres-data:

@@ -38,3 +38,50 @@ Build the application first, then run:
 ```bash
 npm run start
 ```
+
+## Local PostgreSQL
+
+The local PostgreSQL service is isolated from existing database installations.
+It uses PostgreSQL 18.6, publishes only on `127.0.0.1:55432`, and stores data in
+a Compose-scoped persistent volume. Prisma and application database access are
+not configured yet.
+
+Create `.env.postgres.local` from `.env.example`, then assign a unique,
+cryptographically random value to `PROJEKT_SPACE_POSTGRES_PASSWORD`. The local
+credential file is ignored by Git; never display, share, or commit its value.
+
+Validate the Compose definition without printing the resolved configuration:
+
+```bash
+docker compose --env-file .env.postgres.local config --quiet
+```
+
+Pull the pinned image and start the service:
+
+```bash
+docker compose --env-file .env.postgres.local pull postgres
+docker compose --env-file .env.postgres.local up -d --wait --wait-timeout 90 --pull never postgres
+```
+
+Inspect service health:
+
+```bash
+docker compose --env-file .env.postgres.local ps
+```
+
+Stop the service without removing its container or persistent volume:
+
+```bash
+docker compose --env-file .env.postgres.local stop postgres
+```
+
+Start the retained service again with:
+
+```bash
+docker compose --env-file .env.postgres.local start postgres
+```
+
+The password is applied only when PostgreSQL initializes an empty data
+directory. Changing the value in `.env.postgres.local` later does not change
+the password stored in an already initialized database. Use an authenticated
+database password-change operation when rotation is implemented.

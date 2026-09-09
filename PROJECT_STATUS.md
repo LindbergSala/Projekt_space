@@ -38,7 +38,9 @@ The Codex repository inspection recorded the following verified checkpoint:
 - The initial application foundation has been reviewed, verified, and committed
   as `4986a3e chore: initialize next.js application`.
 - The dependency-aware delivery order is documented in
-  [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md); review and commit are pending.
+  [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) and has been committed.
+- The isolated local PostgreSQL service is running and verified; review and
+  commit of its repository configuration are pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -62,6 +64,27 @@ The Codex repository inspection recorded the following verified checkpoint:
   version were not provided, and these results were not agent-observed.
 - This foundation does not require a database connection. Authentication,
   database integration, gameplay, and background jobs remain separate tasks.
+
+## Local PostgreSQL foundation — 2026-09-09
+
+- Docker Compose project `projekt-space-local` runs one PostgreSQL service from
+  `postgres:18.6-trixie` and publishes it only at `127.0.0.1:55432`.
+- Database `projekt_space_dev` and administrative role
+  `projekt_space_admin` were initialized with a password from the ignored,
+  untracked `.env.postgres.local` file. No credential value was added to the
+  repository.
+- The service is healthy and uses the Compose-scoped persistent volume
+  `projekt-space-local_postgres-data` mounted at `/var/lib/postgresql`.
+- Authenticated TCP access, `SELECT 1`, database identity, role identity, and
+  PostgreSQL server version 18.6 were verified with the native PostgreSQL
+  client. An incorrect password was rejected.
+- A disposable regular probe table and marker survived forced recreation of
+  only the PostgreSQL container while retaining the volume. The probe table was
+  then removed and its absence verified.
+- Existing Windows PostgreSQL services and unrelated Docker resources were
+  preserved. The verified local service remains running for development.
+- Prisma integration and creation of a non-administrative application role are
+  pending; the database-and-Prisma milestone is not complete.
 
 ## Open decisions
 
