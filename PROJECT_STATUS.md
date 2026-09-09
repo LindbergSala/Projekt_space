@@ -35,9 +35,8 @@ The Codex repository inspection recorded the following verified checkpoint:
 - `PROJECT_STATUS.md` and `AGENTS.md` have been reviewed and committed.
 - A proposed background-event architecture is documented in
   [ARCHITECTURE.md](ARCHITECTURE.md) and has been committed.
-- The initial application foundation is present and has passed automated lint,
-  build, and local HTTP checks. Browser viewport review remains pending; review
-  and commit of the application foundation are pending.
+- The initial application foundation has been reviewed, verified, and committed
+  as `4986a3e chore: initialize next.js application`.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -53,8 +52,12 @@ The Codex repository inspection recorded the following verified checkpoint:
 - `npm run lint` and `npm run build` passed. Both the development server and
   the built production server returned HTTP 200 for the homepage with the
   expected heading and text.
-- Browser verification at narrow mobile and wider-screen viewports is pending
-  because no browser was available to the Codex inspection.
+- The user reported successful manual browser verification at `360×800` and
+  `1280×800`: the document title, main heading, and description were correct;
+  content was readable and fully visible without clipping or horizontal page
+  scrolling; readability was maintained at 200% browser zoom; and the console
+  showed no application runtime or hydration errors. The browser name and
+  version were not provided, and these results were not agent-observed.
 - This foundation does not require a database connection. Authentication,
   database integration, gameplay, and background jobs remain separate tasks.
 
