@@ -85,3 +85,35 @@ The password is applied only when PostgreSQL initializes an empty data
 directory. Changing the value in `.env.postgres.local` later does not change
 the password stored in an already initialized database. Use an authenticated
 database password-change operation when rotation is implemented.
+
+### Local application role
+
+Prerequisites:
+
+- Install the existing npm dependencies.
+- Create `.env.postgres.local` as described above.
+- Start the healthy `projekt-space-local` PostgreSQL service.
+
+Create or verify the restricted local application role and its credentials:
+
+```bash
+node scripts/setup-local-db-role.mjs
+```
+
+The script reads the administrative password from `.env.postgres.local` only
+for local role setup. It writes the restricted application's `DATABASE_URL` to
+the ignored `.env.local` file. Neither credential file may be committed or
+shared, and the application must not use the administrative role.
+
+The `projekt_space_app` role can log in, connect to `projekt_space_dev`, and
+use its `public` schema. It is not a superuser, cannot create databases or
+roles, cannot bypass row-level security, owns no database or schema, and is not
+granted database or schema creation rights. PostgreSQL's effective `PUBLIC`
+privileges are inspected and reported separately.
+
+Rerunning the command reuses compatible credentials and verifies the role
+without rotating its password. A conflicting role or `DATABASE_URL` causes a
+sanitized failure instead of being overwritten or reset.
+
+Migration credentials, Prisma configuration and generation, and future table
+or default privileges are separate implementation tasks.

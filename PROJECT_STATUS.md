@@ -46,6 +46,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   `897e7ac chore: add prisma dependencies`. Installation, direct-version
   inspection, lint, and build previously passed. Security triage is complete,
   but the audit findings remain open.
+- The restricted local application database role and repeatable setup tooling
+  are implemented and verified; review and commit are pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -88,8 +90,35 @@ The Codex repository inspection recorded the following verified checkpoint:
   then removed and its absence verified.
 - Existing Windows PostgreSQL services and unrelated Docker resources were
   preserved. The verified local service remains running for development.
-- Prisma integration and creation of a non-administrative application role are
-  pending; the database-and-Prisma milestone is not complete.
+- The non-administrative application role is now configured as documented
+  below. Prisma integration remains pending, so the database-and-Prisma
+  milestone is not complete.
+
+### Local application database role — 2026-09-10
+
+- `scripts/setup-local-db-role.mjs` created `projekt_space_app` with login and
+  without superuser, database-creation, role-creation, replication, or
+  row-level-security bypass attributes. It has no role memberships and owns no
+  database or schema.
+- The role has direct `CONNECT` on `projekt_space_dev` and `USAGE` on its
+  `public` schema. Effective `CREATE` is absent on both the database and schema;
+  no table or default privileges were added.
+- PostgreSQL's effective `PUBLIC` grants were inspected: the target database
+  grants `CONNECT` and `TEMPORARY`, and the `public` schema grants `USAGE`.
+  Consequently, the application role has effective temporary-table access.
+- A real TCP connection with the generated application password verified the
+  expected user and database and passed `SELECT 1`; an incorrect password was
+  rejected. Regular table creation in `public` failed with
+  `insufficient_privilege`, its transaction was rolled back, and no probe
+  object remained.
+- The generated application `DATABASE_URL` is stored only in ignored
+  `.env.local`. A second setup run reused compatible credentials without
+  rotating the password and reverified the role, permissions, application
+  authentication, cleanup, and administrative connection.
+- The PostgreSQL service remains running. Prisma configuration and client
+  generation, migration credentials, future table grants, and runtime database
+  access remain separate pending work. The documented Prisma dependency audit
+  findings also remain open.
 
 ## Prisma dependency foundation — 2026-09-09
 
