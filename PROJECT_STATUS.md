@@ -42,9 +42,10 @@ The Codex repository inspection recorded the following verified checkpoint:
 - The isolated local PostgreSQL service is running and verified; its repository
   configuration was reviewed and committed as
   `dacac97 chore: add local postgres service`.
-- The pinned Prisma and PostgreSQL JavaScript dependencies are installed;
-  direct-version, lint, and build checks passed, while audit findings remain
-  open. Review and commit of these dependency changes are pending.
+- The pinned Prisma and PostgreSQL JavaScript dependencies were committed as
+  `897e7ac chore: add prisma dependencies`. Installation, direct-version
+  inspection, lint, and build previously passed. Security triage is complete,
+  but the audit findings remain open.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -105,6 +106,55 @@ The Codex repository inspection recorded the following verified checkpoint:
   database role, and runtime database access remain pending and unverified. No
   Prisma schema, migration, database connection, or application behavior was
   introduced by the dependency installation task.
+
+### Prisma dependency security review — 2026-09-10
+
+The completed read-only security inspection recorded these dependency paths:
+
+- `prisma@7.10.0` → `@prisma/config@7.10.0` → `deepmerge-ts@7.1.5`.
+- `prisma@7.10.0` → `mysql2@3.15.3`.
+
+Three distinct advisories affect the two underlying packages:
+
+- [GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx)
+  is high severity, affects `deepmerge-ts <8.0.0`, and is patched in `8.0.0`.
+  It requires recursive object graphs to reach the merge operation.
+- [GHSA-3f6p-5ww8-9rcr](https://github.com/advisories/GHSA-3f6p-5ww8-9rcr)
+  is high severity, affects `mysql2 <3.22.0`, and is patched in `3.22.0`.
+  It involves a malicious MySQL authentication exchange requesting plaintext
+  credentials.
+- [GHSA-rgwj-5xj2-c3m3](https://github.com/advisories/GHSA-rgwj-5xj2-c3m3)
+  is moderate severity, affects `mysql2 <=3.23.0`, and is patched in `3.23.1`.
+  It requires compressed MySQL communication with a malicious or compromised
+  endpoint.
+
+`@prisma/config` and `prisma` added two propagated package findings. Both the
+full audit and `--omit=dev` audit reported four high package findings and exited
+with code 1. The optional Prisma peer relationship from `@prisma/client`
+explains why the inspected audit graph retained the findings when Prisma was
+declared as a development dependency; this does not establish application
+runtime reachability.
+
+At review time, the project had no Prisma configuration, schema, runtime
+database integration, or MySQL usage, and no current matching attack path was
+established. The packages remain unpatched, however, and exposure must be
+reassessed as integration changes. No compatible stable fix was verified, and
+no forced downgrade, override, or script-policy change was applied.
+
+The installation warning did not block script execution. Prisma's preinstall
+and the engines postinstall recorded successful exits; the individual
+`unrs-resolver` script result was not preserved. The original warning could not
+be recovered verbatim.
+
+Bounded local PostgreSQL development may continue using trusted repository
+configuration while these findings remain open. Reassess them when Prisma
+configuration or runtime usage changes and during production security review.
+Prefer a verified compatible stable upstream fix that patches or removes both
+affected paths; any major-version upgrade requires a separate compatibility
+review. Future remediation must repeat full and `--omit=dev` audits, dependency
+path inspection, lint, build, and relevant Prisma integration checks once that
+integration exists. Prisma configuration, client generation, application-role
+creation, and runtime database access remain pending.
 
 ## Open decisions
 
