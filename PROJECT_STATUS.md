@@ -39,8 +39,12 @@ The Codex repository inspection recorded the following verified checkpoint:
   as `4986a3e chore: initialize next.js application`.
 - The dependency-aware delivery order is documented in
   [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) and has been committed.
-- The isolated local PostgreSQL service is running and verified; review and
-  commit of its repository configuration are pending.
+- The isolated local PostgreSQL service is running and verified; its repository
+  configuration was reviewed and committed as
+  `dacac97 chore: add local postgres service`.
+- The pinned Prisma and PostgreSQL JavaScript dependencies are installed;
+  direct-version, lint, and build checks passed, while audit findings remain
+  open. Review and commit of these dependency changes are pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -85,6 +89,22 @@ The Codex repository inspection recorded the following verified checkpoint:
   preserved. The verified local service remains running for development.
 - Prisma integration and creation of a non-administrative application role are
   pending; the database-and-Prisma milestone is not complete.
+
+## Prisma dependency foundation — 2026-09-09
+
+- Runtime dependencies are pinned to `@prisma/client` `7.10.0`,
+  `@prisma/adapter-pg` `7.10.0`, `pg` `8.23.0`, and `dotenv` `17.4.2`.
+- The Prisma CLI development dependency is pinned to `prisma` `7.10.0`.
+- One `npm install` completed successfully, and `npm ls --depth=0` confirmed
+  the requested direct versions. `npm run lint` and `npm run build` passed.
+- `npm audit --audit-level=moderate` failed with four high-severity findings in
+  the transitive Prisma CLI dependency chain, involving `deepmerge-ts` and
+  `mysql2`. npm only proposed a forced breaking downgrade to Prisma `6.19.3`,
+  which was not applied.
+- Prisma configuration and client generation, a non-administrative application
+  database role, and runtime database access remain pending and unverified. No
+  Prisma schema, migration, database connection, or application behavior was
+  introduced by the dependency installation task.
 
 ## Open decisions
 
