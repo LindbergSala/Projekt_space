@@ -48,13 +48,13 @@ The Codex repository inspection recorded the following verified checkpoint:
   but the audit findings remain open.
 - The restricted local application database role and repeatable setup tooling
   are implemented and verified. The initial credential-handling correction was
-  committed as `bf25d02 harden local database credential setup`. Follow-up
-  temporary-file and password-input hardening is implemented and validated;
-  review and commit are pending.
+  committed as `bf25d02 harden local database credential setup`, and the
+  follow-up temporary-file and password-input hardening was reviewed and
+  committed as `f433372 fix: secure temporary credentials and password input`.
 - Minimal Prisma CLI configuration (`prisma.config.mjs`) and a PostgreSQL-only
-  `prisma/schema.prisma` are implemented and schema-validated; review and
-  commit are pending. Client generation, migrations, and runtime database
-  integration remain separate pending work.
+  `prisma/schema.prisma` were reviewed and committed as
+  `ec7341a feat: add minimal prisma cli configuration`. Client generation,
+  migrations, and runtime database integration remain separate pending work.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -266,19 +266,16 @@ creation, and runtime database access remain pending.
 
 #### Reassessment for the new Prisma configuration — 2026-09-11
 
-- Adding `prisma.config.mjs` means the Prisma CLI now actually finds, imports,
-  and executes a repository-controlled config module on every invocation,
-  where previously no candidate config file existed. This makes the
-  `@prisma/config` config-loading and merge code path (the one carrying the
-  open `deepmerge-ts` finding) actually reachable in this project for the
-  first time, rather than merely present but unexercised.
-- The findings are still assessed as not currently exploitable here: the
-  config content is a small, static, developer-authored object with two
-  shallow fields (`schema`, `datasource.url`); it contains no attacker-
-  controlled, externally supplied, or deeply recursive input, which the
-  `deepmerge-ts` advisory requires. No `mysql2` connection, import, or
-  provider is used; the schema declares only a PostgreSQL datasource, so the
-  `mysql2` findings remain unaffected by this change.
+- `prisma.config.mjs` is a new, reviewed, repository-controlled configuration
+  file. The repository-local Prisma CLI's `validate` command reported
+  "Loaded Prisma config from prisma.config.mjs", confirming the module
+  loaded successfully.
+- No matching attack path was identified in this configuration: it is a
+  small, static, developer-authored object with two shallow fields (`schema`,
+  `datasource.url`), no attacker-controlled, externally supplied, or deeply
+  recursive input, and no `mysql2` connection, import, or provider. This does
+  not establish that exploitation is impossible, only that this review found
+  no such path.
 - This is a reassessment of exposure, not remediation. No dependency was
   upgraded, downgraded, overridden, or patched, and no new audit was run as
   part of this task. The four high-severity findings remain open and must be

@@ -43,8 +43,8 @@ npm run start
 
 The local PostgreSQL service is isolated from existing database installations.
 It uses PostgreSQL 18.6, publishes only on `127.0.0.1:55432`, and stores data in
-a Compose-scoped persistent volume. Prisma and application database access are
-not configured yet.
+a Compose-scoped persistent volume. Minimal Prisma CLI configuration now
+exists; application runtime database access remains pending.
 
 Create `.env.postgres.local` from `.env.example`, then assign a unique,
 cryptographically random value to `PROJEKT_SPACE_POSTGRES_PASSWORD`. The local
