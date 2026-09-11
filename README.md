@@ -199,3 +199,39 @@ runtime database integration. Migrations and runtime integration remain
 separate, unimplemented tasks. The open Prisma dependency audit findings in
 [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this configuration
 and remain unresolved.
+
+### Standalone Prisma connectivity check
+
+`scripts/verify-prisma-connection.mjs` is a small, repeatable script that
+confirms Prisma can open a real, read-only connection through the installed
+`@prisma/adapter-pg` driver adapter (`PrismaPg`). It loads only `.env.local`
+(never the administrative `.env.postgres.local`), resolving both that file
+and its `DATABASE_URL` requirement relative to the script's own location
+rather than `prisma.config.mjs` or the caller's working directory. It reuses
+the reviewed `parseCompatibleDatabaseUrl` check from
+`scripts/setup-local-db-role.mjs` to reject any URL that does not target the
+documented local host, port, database, and `projekt_space_app` role,
+including query-parameter or fragment overrides.
+
+With a compatible URL, it connects using `PrismaClient` and `PrismaPg` with a
+bounded 5-second connection and query timeout, and runs one fixed read-only
+query (`SELECT 1`, `current_user`, `current_database()`), verifying the
+returned identity before reporting success. Failures print a sanitized
+message only—either the reviewed validation error or a bare error code—and
+exit non-zero; the connection URL and password are never printed. The
+adapter's pool is always released through `prisma.$disconnect()` in a
+`finally` block, on both the success and failure paths.
+
+Run it with:
+
+```bash
+node scripts/verify-prisma-connection.mjs
+```
+
+This passed against the running local PostgreSQL service, confirming Prisma
+can connect, authenticate, and query as `projekt_space_app` on
+`projekt_space_dev`. This verifies standalone Prisma connectivity only: the
+script is not wired into the Next.js application, no models, migrations, or
+application integration exist yet, and the documented Prisma dependency audit
+findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) remain open and
+unresolved.

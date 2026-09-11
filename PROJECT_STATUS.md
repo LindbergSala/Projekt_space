@@ -54,8 +54,10 @@ The Codex repository inspection recorded the following verified checkpoint:
 - Minimal Prisma CLI configuration (`prisma.config.mjs`) and a PostgreSQL-only
   `prisma/schema.prisma` were reviewed and committed as
   `ec7341a feat: add minimal prisma cli configuration`. A `prisma-client-js`
-  generator was added and the client was generated successfully; review and
-  commit are pending. Migrations and runtime database integration remain
+  generator was added and the client was generated successfully, reviewed and
+  committed as `0f18b77 feat: configure prisma client generation`. A
+  standalone script verified a real read-only Prisma connection; review and
+  commit are pending. Migrations and Next.js application integration remain
   separate pending work.
 - Other foundation documents still need reconciliation and integration.
 
@@ -219,6 +221,28 @@ The Codex repository inspection recorded the following verified checkpoint:
 - This confirms successful generation only, not working runtime database
   integration. Migrations, runtime integration, and the documented Prisma
   dependency audit findings remain open and unaddressed by this task.
+
+#### Standalone Prisma connectivity verification — 2026-09-11
+
+- `scripts/verify-prisma-connection.mjs` loads only `.env.local`, resolves it
+  and requires `DATABASE_URL` relative to the script file (not
+  `prisma.config.mjs`, which does not configure standalone runtime scripts),
+  and reuses the reviewed `parseCompatibleDatabaseUrl` check from
+  `scripts/setup-local-db-role.mjs` to reject unexpected hosts, ports,
+  databases, usernames, or query/fragment overrides before connecting.
+- It connects with `PrismaClient` and the installed `@prisma/adapter-pg`
+  (`PrismaPg`), using a bounded 5-second connection and query timeout, and
+  runs one fixed read-only query (`SELECT 1`, `current_user`,
+  `current_database()`).
+- Run twice against the existing local PostgreSQL service, the script
+  connected and queried successfully as `projekt_space_app` on
+  `projekt_space_dev` both times, and a deliberately mismatched `DATABASE_URL`
+  was rejected before any connection attempt with a sanitized message. The
+  adapter's internally owned pool was released through `prisma.$disconnect()`
+  in a `finally` block on both the success and failure paths.
+- This verifies standalone Prisma connectivity only. The script is not wired
+  into the Next.js application; models, migrations, application integration,
+  and the documented Prisma dependency audit findings remain open.
 
 ## Prisma dependency foundation — 2026-09-09
 
