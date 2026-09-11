@@ -47,7 +47,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   inspection, lint, and build previously passed. Security triage is complete,
   but the audit findings remain open.
 - The restricted local application database role and repeatable setup tooling
-  are implemented and verified; review and commit are pending.
+  are implemented and verified. Credential-handling corrections and regression
+  tests are complete; review and commit are pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -119,6 +120,35 @@ The Codex repository inspection recorded the following verified checkpoint:
   generation, migration credentials, future table grants, and runtime database
   access remain separate pending work. The documented Prisma dependency audit
   findings also remain open.
+
+#### Credential-handling verification — 2026-09-11
+
+- Environment parsing now uses `dotenv` consistently and rejects duplicate or
+  ambiguous `DATABASE_URL` assignments, the literal example password, query
+  parameters, fragments, malformed encoding, and incorrect connection targets
+  before persistent work begins.
+- Existing-role setup authenticates with the stored application credentials
+  before compatibility checks and makes no compensating password or grant
+  changes. New-role setup atomically saves the credential before a single
+  native `psql` transaction creates the role, sets its password, and grants its
+  restricted access. Saved credentials remain available after a database
+  failure, while a credential-file failure prevents role creation.
+- Thirteen Node.js regression tests passed. They use synthetic credentials,
+  temporary directories, and mocked boundaries; no failure-path test used the
+  real credential files or application role.
+- A task-owned native `psql` password-setting probe completed within a
+  transaction that was rolled back. The probe role was absent afterward, and
+  its synthetic password did not appear in process arguments, SQL, or captured
+  output.
+- The corrected setup ran twice against the existing application role. Both
+  runs authenticated and reverified the role, permissions, positive and
+  negative password checks, restricted table creation, rollback cleanup, and
+  the final administrative connection without mutation or password rotation.
+  Internal comparisons confirmed that `.env.local` and
+  `.env.postgres.local` remained unchanged.
+- The PostgreSQL service is healthy and remains running. Prisma configuration,
+  generation, migrations, and runtime database integration remain pending, and
+  the documented Prisma dependency audit findings remain open.
 
 ## Prisma dependency foundation — 2026-09-09
 

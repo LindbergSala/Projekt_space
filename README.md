@@ -105,6 +105,11 @@ for local role setup. It writes the restricted application's `DATABASE_URL` to
 the ignored `.env.local` file. Neither credential file may be committed or
 shared, and the application must not use the administrative role.
 
+Environment values are parsed with `dotenv`. The setup rejects duplicate or
+ambiguous `DATABASE_URL` assignments, the documented example password, URL
+parameters or fragments, and connection targets other than the expected local
+database before it can change credentials or the database.
+
 The `projekt_space_app` role can log in, connect to `projekt_space_dev`, and
 use its `public` schema. It is not a superuser, cannot create databases or
 roles, cannot bypass row-level security, owns no database or schema, and is not
@@ -114,6 +119,19 @@ privileges are inspected and reported separately.
 Rerunning the command reuses compatible credentials and verifies the role
 without rotating its password. A conflicting role or `DATABASE_URL` causes a
 sanitized failure instead of being overwritten or reset.
+
+For a new role, the generated credentials are written atomically before one
+native `psql` transaction creates the role, sets its password, and grants the
+restricted access. A credential-file failure prevents database creation. If
+database setup fails after the credentials are saved, they remain available
+for a safe retry. Existing unrelated environment entries are preserved, while
+concurrent or conflicting file changes cause the setup to stop.
+
+Run the credential-handling regression tests with:
+
+```bash
+node --test tests/setup-local-db-role.test.mjs
+```
 
 Migration credentials, Prisma configuration and generation, and future table
 or default privileges are separate implementation tasks.
