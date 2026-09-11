@@ -53,8 +53,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   committed as `f433372 fix: secure temporary credentials and password input`.
 - Minimal Prisma CLI configuration (`prisma.config.mjs`) and a PostgreSQL-only
   `prisma/schema.prisma` were reviewed and committed as
-  `ec7341a feat: add minimal prisma cli configuration`. Client generation,
-  migrations, and runtime database integration remain separate pending work.
+  `ec7341a feat: add minimal prisma cli configuration`. A `prisma-client-js`
+  generator was added and the client was generated successfully; review and
+  commit are pending. Migrations and runtime database integration remain
+  separate pending work.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -198,6 +200,25 @@ The Codex repository inspection recorded the following verified checkpoint:
   Client generation, migrations, and runtime database access remain separate,
   unimplemented tasks, and the documented Prisma dependency audit findings
   remain open and unaffected by this configuration.
+
+#### Prisma client generation — 2026-09-11
+
+- `prisma/schema.prisma` now also defines a `prisma-client-js` generator
+  (`generator client`), chosen because the newer default `prisma-client`
+  generator only emits TypeScript sources and requires an explicit `output`
+  path, while this project has no TypeScript toolchain. `prisma-client-js`
+  needed no explicit `output`; its default location
+  (`node_modules/@prisma/client`, re-exporting `node_modules/.prisma/client`)
+  is already covered by the existing `node_modules/` Git ignore rule.
+- The repository-local Prisma CLI's `validate` and `generate` commands both
+  passed with no models defined in the schema and no automatic download;
+  `generate` produced the client in 52ms.
+- An offline `require('@prisma/client')` import check confirmed `PrismaClient`
+  and `Prisma` are exported; no client was instantiated and no database
+  connection was opened or attempted.
+- This confirms successful generation only, not working runtime database
+  integration. Migrations, runtime integration, and the documented Prisma
+  dependency audit findings remain open and unaddressed by this task.
 
 ## Prisma dependency foundation — 2026-09-09
 

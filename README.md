@@ -155,31 +155,47 @@ restricted application `DATABASE_URL` is required: if it is missing, Prisma's
 own `env()` helper throws an error naming only the missing variable, never its
 value.
 
-`prisma/schema.prisma` defines only a PostgreSQL datasource:
+`prisma/schema.prisma` defines a `prisma-client-js` generator and a PostgreSQL
+datasource, with no models, enums, migrations, or seed data yet:
 
 ```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
 }
 ```
 
+`prisma-client-js` was chosen over the newer default `prisma-client`
+generator because `prisma-client` only emits TypeScript sources and requires
+an explicit `output` path, while this project has no TypeScript toolchain.
+`prisma-client-js` emits directly runnable JavaScript at its built-in default
+location (`node_modules/@prisma/client`, re-exporting
+`node_modules/.prisma/client`), already covered by the existing
+`node_modules/` ignore rule, so no `output` path or `.gitignore` change was
+needed.
+
 Its connection URL is supplied entirely through `prisma.config.mjs`
 (`datasource.url`), which is the configuration API this pinned Prisma version
-supports; the schema intentionally has no `url`, models, enums, generators,
-migrations, or seed data yet.
+supports.
 
-Validate the schema with the repository-local Prisma CLI, without letting any
-tool install or download a CLI:
+Validate the schema and generate the client with the repository-local Prisma
+CLI, without letting any tool install or download a CLI:
 
 ```bash
 node_modules/.bin/prisma validate
+node_modules/.bin/prisma generate
 ```
 
-On Windows PowerShell, run `.\node_modules\.bin\prisma.cmd validate` instead.
-This command only confirms that `prisma.config.mjs` loads, that
-`DATABASE_URL` resolves, and that the schema is syntactically and semantically
-valid. It does not open a database connection and does not prove that Prisma
-can read or write data at runtime. Client generation, migrations, and runtime
-integration remain separate, unimplemented tasks. The open Prisma dependency
-audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by
-this configuration and remain unresolved.
+On Windows PowerShell, use `.\node_modules\.bin\prisma.cmd` instead. Both
+commands passed without opening a database connection: `validate` confirms
+`prisma.config.mjs` loads, `DATABASE_URL` resolves, and the schema is valid;
+`generate` produced the client above even with no models defined. A
+`require('@prisma/client')` check confirmed `PrismaClient` and `Prisma` are
+exported, without instantiating a client. Neither command proves working
+runtime database integration. Migrations and runtime integration remain
+separate, unimplemented tasks. The open Prisma dependency audit findings in
+[PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this configuration
+and remain unresolved.
