@@ -51,6 +51,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   committed as `bf25d02 harden local database credential setup`. Follow-up
   temporary-file and password-input hardening is implemented and validated;
   review and commit are pending.
+- Minimal Prisma CLI configuration (`prisma.config.mjs`) and a PostgreSQL-only
+  `prisma/schema.prisma` are implemented and schema-validated; review and
+  commit are pending. Client generation, migrations, and runtime database
+  integration remain separate pending work.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -173,6 +177,28 @@ The Codex repository inspection recorded the following verified checkpoint:
   integration remain pending. The documented dependency audit findings remain
   open.
 
+#### Minimal Prisma CLI configuration — 2026-09-11
+
+- `prisma.config.mjs` resolves `prisma/schema.prisma` and `.env.local` as
+  absolute paths relative to its own file location. It loads only the
+  restricted application `.env.local` file through the installed `dotenv`
+  package with output suppressed, never reads administrative credentials, and
+  requires `DATABASE_URL` through Prisma's own `env()` helper, which fails with
+  a variable-name-only error if it is missing.
+- `prisma/schema.prisma` defines only a PostgreSQL `datasource` block with no
+  `url`, models, enums, generators, migrations, or seed data. The connection
+  URL is supplied exclusively through `prisma.config.mjs`, the configuration
+  API the pinned `prisma` `7.10.0` CLI supports.
+- `node --check prisma.config.mjs` and the repository-local Prisma CLI's
+  `validate` command both passed, confirming the config file loads,
+  `DATABASE_URL` resolves, and the schema is syntactically and semantically
+  valid. `npm run lint` continued to pass.
+- Schema validation does not open a database connection and does not
+  demonstrate working Prisma runtime integration; both remain unverified.
+  Client generation, migrations, and runtime database access remain separate,
+  unimplemented tasks, and the documented Prisma dependency audit findings
+  remain open and unaffected by this configuration.
+
 ## Prisma dependency foundation — 2026-09-09
 
 - Runtime dependencies are pinned to `@prisma/client` `7.10.0`,
@@ -237,6 +263,27 @@ review. Future remediation must repeat full and `--omit=dev` audits, dependency
 path inspection, lint, build, and relevant Prisma integration checks once that
 integration exists. Prisma configuration, client generation, application-role
 creation, and runtime database access remain pending.
+
+#### Reassessment for the new Prisma configuration — 2026-09-11
+
+- Adding `prisma.config.mjs` means the Prisma CLI now actually finds, imports,
+  and executes a repository-controlled config module on every invocation,
+  where previously no candidate config file existed. This makes the
+  `@prisma/config` config-loading and merge code path (the one carrying the
+  open `deepmerge-ts` finding) actually reachable in this project for the
+  first time, rather than merely present but unexercised.
+- The findings are still assessed as not currently exploitable here: the
+  config content is a small, static, developer-authored object with two
+  shallow fields (`schema`, `datasource.url`); it contains no attacker-
+  controlled, externally supplied, or deeply recursive input, which the
+  `deepmerge-ts` advisory requires. No `mysql2` connection, import, or
+  provider is used; the schema declares only a PostgreSQL datasource, so the
+  `mysql2` findings remain unaffected by this change.
+- This is a reassessment of exposure, not remediation. No dependency was
+  upgraded, downgraded, overridden, or patched, and no new audit was run as
+  part of this task. The four high-severity findings remain open and must be
+  reassessed again once client generation, migrations, or runtime database
+  access are implemented.
 
 ## Open decisions
 

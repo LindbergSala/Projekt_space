@@ -139,5 +139,47 @@ Run the credential-handling regression tests with:
 node --test tests/setup-local-db-role.test.mjs
 ```
 
-Migration credentials, Prisma configuration and generation, and future table
-or default privileges are separate implementation tasks.
+Migration credentials, Prisma client generation, and future table or default
+privileges are separate implementation tasks. Minimal Prisma CLI configuration
+and schema validation are described below.
+
+## Prisma configuration
+
+`prisma.config.mjs` at the repository root is the minimal Prisma CLI
+configuration. It resolves `prisma/schema.prisma` and `.env.local` as absolute
+paths relative to its own file location, so it behaves the same regardless of
+the caller's working directory. It loads `.env.local` with the installed
+`dotenv` package using `{ quiet: true }` so no configuration values are
+printed, and it never reads the administrative `.env.postgres.local` file. The
+restricted application `DATABASE_URL` is required: if it is missing, Prisma's
+own `env()` helper throws an error naming only the missing variable, never its
+value.
+
+`prisma/schema.prisma` defines only a PostgreSQL datasource:
+
+```prisma
+datasource db {
+  provider = "postgresql"
+}
+```
+
+Its connection URL is supplied entirely through `prisma.config.mjs`
+(`datasource.url`), which is the configuration API this pinned Prisma version
+supports; the schema intentionally has no `url`, models, enums, generators,
+migrations, or seed data yet.
+
+Validate the schema with the repository-local Prisma CLI, without letting any
+tool install or download a CLI:
+
+```bash
+node_modules/.bin/prisma validate
+```
+
+On Windows PowerShell, run `.\node_modules\.bin\prisma.cmd validate` instead.
+This command only confirms that `prisma.config.mjs` loads, that
+`DATABASE_URL` resolves, and that the schema is syntactically and semantically
+valid. It does not open a database connection and does not prove that Prisma
+can read or write data at runtime. Client generation, migrations, and runtime
+integration remain separate, unimplemented tasks. The open Prisma dependency
+audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by
+this configuration and remain unresolved.
