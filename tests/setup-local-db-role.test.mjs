@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -11,6 +11,7 @@ import {
   appendDatabaseUrl,
   createRoleWithNativeClient,
   createDatabaseUrl,
+  createTemporaryCredentialPath,
   parseCompatibleDatabaseUrl,
   parseUniqueEnvValue,
   persistCredentialFile,
@@ -24,6 +25,14 @@ const SCRIPT_PATH = path.resolve(
   TEST_DIRECTORY,
   "../scripts/setup-local-db-role.mjs",
 )
+const REPOSITORY_ROOT = path.resolve(TEST_DIRECTORY, "..")
+
+function temporaryFileOptions(overrides = {}) {
+  return {
+    verifyTemporaryPathIgnored() {},
+    ...overrides,
+  }
+}
 
 function callbacks(overrides = {}) {
   return {
@@ -111,6 +120,35 @@ test("incorrect connection targets are rejected", () => {
       SetupError,
     )
   }
+})
+
+test("encoded CR, LF, and NUL passwords fail before mutations", async () => {
+  for (const password of ["unsafe\rpassword", "unsafe\npassword", "unsafe\0password"]) {
+    const calls = []
+
+    await assert.rejects(
+      reconcileRoleSetup({
+        appSource: `DATABASE_URL=${createDatabaseUrl(password)}\n`,
+        existingRole: null,
+        ...callbacks({
+          persistCredentials: async () => calls.push("persist"),
+          createNewRole: async () => calls.push("create"),
+        }),
+      }),
+      /unsupported control characters/,
+    )
+
+    assert.deepEqual(calls, [])
+  }
+})
+
+test("ordinary URL-encoded password characters remain supported", () => {
+  const password = "spaces /:@?%#[] remain encoded"
+
+  assert.equal(
+    parseCompatibleDatabaseUrl(createDatabaseUrl(password)),
+    password,
+  )
 })
 
 test("invalid input causes no persistent or database writes", async () => {
@@ -226,7 +264,7 @@ test("credential persistence preserves unrelated environment entries", async (co
     filePath,
     expectedSource: original,
     nextSource,
-  })
+  }, temporaryFileOptions())
 
   const persisted = await readFile(filePath, "utf8")
   assert.equal(persisted, nextSource)
@@ -247,11 +285,136 @@ test("credential persistence refuses to overwrite a changed file", async (contex
       filePath,
       expectedSource: "STALE_SETTING=old-value\n",
       nextSource: appendDatabaseUrl(current, VALID_URL),
-    }),
+    }, temporaryFileOptions()),
     /changed before it could be updated/,
   )
 
   assert.equal(await readFile(filePath, "utf8"), current)
+})
+
+test("the generated temporary credential filename is ignored", () => {
+  const temporaryPath = createTemporaryCredentialPath(
+    path.join(REPOSITORY_ROOT, ".env.local"),
+    "synthetic-ignore-check",
+  )
+  const relativePath = path.relative(REPOSITORY_ROOT, temporaryPath)
+  const result = spawnSync(
+    "git",
+    ["check-ignore", "--quiet", "--no-index", "--", relativePath],
+    {
+      cwd: REPOSITORY_ROOT,
+      stdio: "ignore",
+      windowsHide: true,
+    },
+  )
+
+  assert.equal(path.basename(temporaryPath), ".env.local.synthetic-ignore-check.tmp")
+  assert.equal(result.status, 0)
+})
+
+test("partial credential writes remove the owned temporary file", async (context) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "projekt-space-role-test-"))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+
+  const filePath = path.join(directory, ".env.local")
+  const uniqueId = "partial-write"
+  const temporaryPath = createTemporaryCredentialPath(filePath, uniqueId)
+  const original = "UNRELATED_SETTING=preserved\n"
+  const calls = []
+  await writeFile(filePath, original, "utf8")
+
+  await assert.rejects(
+    reconcileRoleSetup({
+      appSource: original,
+      existingRole: null,
+      ...callbacks({
+        persistCredentials: async ({ expectedSource, nextSource }) => {
+          calls.push("persist")
+          await persistCredentialFile({
+            filePath,
+            expectedSource,
+            nextSource,
+          }, temporaryFileOptions({
+            uniqueId,
+            async openFile(...args) {
+              const handle = await open(...args)
+              return {
+                close: () => handle.close(),
+                async writeFile(value, encoding) {
+                  await handle.writeFile(value.slice(0, 12), encoding)
+                  throw new Error("Synthetic partial write failure.")
+                },
+              }
+            },
+          }))
+        },
+        createNewRole: async () => calls.push("create"),
+      }),
+    }),
+    /could not be persisted safely/,
+  )
+
+  assert.deepEqual(calls, ["persist"])
+  assert.equal(await readFile(filePath, "utf8"), original)
+  await assert.rejects(readFile(temporaryPath, "utf8"), { code: "ENOENT" })
+})
+
+test("exclusive-create failure never removes another temporary file", async (context) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "projekt-space-role-test-"))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+
+  const filePath = path.join(directory, ".env.local")
+  const uniqueId = "already-owned"
+  const temporaryPath = createTemporaryCredentialPath(filePath, uniqueId)
+  const original = "UNRELATED_SETTING=preserved\n"
+  const sentinel = "PREEXISTING_SYNTHETIC_CONTENT\n"
+  await writeFile(filePath, original, "utf8")
+  await writeFile(temporaryPath, sentinel, "utf8")
+
+  await assert.rejects(
+    persistCredentialFile({
+      filePath,
+      expectedSource: original,
+      nextSource: appendDatabaseUrl(original, VALID_URL),
+    }, temporaryFileOptions({ uniqueId })),
+    /could not be persisted safely/,
+  )
+
+  assert.equal(await readFile(filePath, "utf8"), original)
+  assert.equal(await readFile(temporaryPath, "utf8"), sentinel)
+})
+
+test("temporary credential cleanup failures are reported", async (context) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "projekt-space-role-test-"))
+  context.after(() => rm(directory, { recursive: true, force: true }))
+
+  const filePath = path.join(directory, ".env.local")
+  const original = "UNRELATED_SETTING=preserved\n"
+  await writeFile(filePath, original, "utf8")
+
+  await assert.rejects(
+    persistCredentialFile({
+      filePath,
+      expectedSource: original,
+      nextSource: appendDatabaseUrl(original, VALID_URL),
+    }, temporaryFileOptions({
+      async openFile(...args) {
+        const handle = await open(...args)
+        return {
+          close: () => handle.close(),
+          async writeFile() {
+            throw new Error("Synthetic write failure.")
+          },
+        }
+      },
+      async removeFile() {
+        throw new Error("Synthetic cleanup failure.")
+      },
+    })),
+    /could not be removed safely/,
+  )
+
+  assert.equal(await readFile(filePath, "utf8"), original)
 })
 
 test("native password setup keeps credentials out of arguments and SQL", () => {
@@ -279,4 +442,22 @@ test("native password setup keeps credentials out of arguments and SQL", () => {
   })
 
   assert.equal(inspected, true)
+})
+
+test("unsafe native-client passwords never spawn a process", () => {
+  for (const password of ["unsafe\rpassword", "unsafe\npassword", "unsafe\0password"]) {
+    let spawnCount = 0
+
+    assert.throws(
+      () => createRoleWithNativeClient(password, {
+        spawn() {
+          spawnCount += 1
+          return { status: 0, stdout: "", stderr: "" }
+        },
+      }),
+      /unsupported control characters/,
+    )
+
+    assert.equal(spawnCount, 0)
+  }
 })

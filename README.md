@@ -108,7 +108,9 @@ shared, and the application must not use the administrative role.
 Environment values are parsed with `dotenv`. The setup rejects duplicate or
 ambiguous `DATABASE_URL` assignments, the documented example password, URL
 parameters or fragments, and connection targets other than the expected local
-database before it can change credentials or the database.
+database before it can change credentials or the database. Passwords whose
+decoded values contain carriage returns, newlines, or NUL characters are also
+rejected before persistence and again at the native-client boundary.
 
 The `projekt_space_app` role can log in, connect to `projekt_space_dev`, and
 use its `public` schema. It is not a superuser, cannot create databases or
@@ -120,12 +122,16 @@ Rerunning the command reuses compatible credentials and verifies the role
 without rotating its password. A conflicting role or `DATABASE_URL` causes a
 sanitized failure instead of being overwritten or reset.
 
-For a new role, the generated credentials are written atomically before one
-native `psql` transaction creates the role, sets its password, and grants the
-restricted access. A credential-file failure prevents database creation. If
-database setup fails after the credentials are saved, they remain available
-for a safe retry. Existing unrelated environment entries are preserved, while
-concurrent or conflicting file changes cause the setup to stop.
+For a new role, the generated credentials are written through an ignored
+`.env.local.<unique-id>.tmp` file before one native `psql` transaction creates
+the role, sets its password, and grants the restricted access. The setup checks
+the temporary path's ignore protection, exclusively creates the file before
+writing, removes task-owned partial files after failures, and reports cleanup
+failures. A credential-file failure prevents database creation. If database
+setup fails after the credentials are saved, they remain available for a safe
+retry. Existing unrelated environment entries are preserved. Content
+comparisons before replacement detect observed conflicting changes, but they
+are not a file lock and cannot guarantee detection of every concurrent edit.
 
 Run the credential-handling regression tests with:
 

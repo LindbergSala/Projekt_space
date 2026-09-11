@@ -2,10 +2,10 @@ import { randomBytes } from "node:crypto"
 import { constants as fsConstants } from "node:fs"
 import {
   access,
+  open,
   readFile,
   rename,
   unlink,
-  writeFile,
 } from "node:fs/promises"
 import { spawnSync } from "node:child_process"
 import path from "node:path"
@@ -132,6 +132,18 @@ export function parseCompatibleDatabaseUrl(value) {
     fail("DATABASE_URL still contains the example password.")
   }
 
+  return validatePasswordForNativeInput(password)
+}
+
+export function validatePasswordForNativeInput(password) {
+  if (typeof password !== "string" || password.length === 0) {
+    fail("The application password is empty or invalid.")
+  }
+
+  if (/[\r\n\0]/u.test(password)) {
+    fail("The application password contains unsupported control characters.")
+  }
+
   return password
 }
 
@@ -165,16 +177,41 @@ async function readOptionalFile(filePath) {
   }
 }
 
+export function createTemporaryCredentialPath(
+  filePath,
+  uniqueId = `${process.pid}.${randomBytes(8).toString("hex")}`,
+) {
+  return path.join(
+    path.dirname(filePath),
+    `${path.basename(filePath)}.${uniqueId}.tmp`,
+  )
+}
+
+function assertIgnoredPath(filePath) {
+  const relativePath = path.relative(ROOT_DIRECTORY, filePath)
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    fail("The temporary credential file is outside the repository.")
+  }
+
+  assertIgnored(relativePath)
+}
+
 export async function persistCredentialFile({
   filePath,
   expectedSource,
   nextSource,
-}) {
-  const temporaryPath = path.join(
-    path.dirname(filePath),
-    `.${path.basename(filePath)}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`,
-  )
-  let temporaryFileExists = false
+}, {
+  openFile = open,
+  renameFile = rename,
+  removeFile = unlink,
+  verifyTemporaryPathIgnored = assertIgnoredPath,
+  uniqueId,
+} = {}) {
+  const temporaryPath = createTemporaryCredentialPath(filePath, uniqueId)
+  let temporaryFile
+  let ownsTemporaryFile = false
+  let operationError
+  let cleanupError
 
   try {
     const currentSource = await readOptionalFile(filePath)
@@ -182,35 +219,55 @@ export async function persistCredentialFile({
       fail("The local credential file changed before it could be updated.")
     }
 
-    await writeFile(temporaryPath, nextSource, {
-      encoding: "utf8",
-      flag: "wx",
-      mode: 0o600,
-    })
-    temporaryFileExists = true
+    verifyTemporaryPathIgnored(temporaryPath)
+    temporaryFile = await openFile(temporaryPath, "wx", 0o600)
+    ownsTemporaryFile = true
+    await temporaryFile.writeFile(nextSource, "utf8")
+    await temporaryFile.close()
+    temporaryFile = undefined
 
     const sourceBeforeRename = await readOptionalFile(filePath)
     if (sourceBeforeRename !== expectedSource) {
       fail("The local credential file changed while it was being updated.")
     }
 
-    await rename(temporaryPath, filePath)
-    temporaryFileExists = false
+    await renameFile(temporaryPath, filePath)
+    ownsTemporaryFile = false
 
     const persistedSource = await readOptionalFile(filePath)
     if (persistedSource !== nextSource) {
       fail("The saved local credential file could not be verified.")
     }
   } catch (error) {
-    if (error instanceof SetupError) {
-      throw error
+    operationError = error
+  } finally {
+    if (temporaryFile) {
+      try {
+        await temporaryFile.close()
+      } catch (error) {
+        cleanupError ??= error
+      }
     }
 
-    fail("The local application credential could not be persisted safely.")
-  } finally {
-    if (temporaryFileExists) {
-      await unlink(temporaryPath).catch(() => {})
+    if (ownsTemporaryFile) {
+      try {
+        await removeFile(temporaryPath)
+      } catch (error) {
+        cleanupError ??= error
+      }
     }
+  }
+
+  if (cleanupError) {
+    fail("A task-owned temporary credential file could not be removed safely.")
+  }
+
+  if (operationError instanceof SetupError) {
+    throw operationError
+  }
+
+  if (operationError) {
+    fail("The local application credential could not be persisted safely.")
   }
 }
 
@@ -246,6 +303,8 @@ export async function reconcileRoleSetup({
     if (typeof password !== "string" || password.length === 0) {
       fail("A secure application password could not be generated.")
     }
+
+    validatePasswordForNativeInput(password)
 
     const nextSource = appendDatabaseUrl(
       appSource,
@@ -538,6 +597,8 @@ export function createRoleWithNativeClient(
   password,
   { spawn = spawnSync, repositoryRoot = ROOT_DIRECTORY } = {},
 ) {
+  validatePasswordForNativeInput(password)
+
   const args = [
     "compose",
     "--env-file",

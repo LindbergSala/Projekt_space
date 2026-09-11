@@ -47,8 +47,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   inspection, lint, and build previously passed. Security triage is complete,
   but the audit findings remain open.
 - The restricted local application database role and repeatable setup tooling
-  are implemented and verified. Credential-handling corrections and regression
-  tests are complete; review and commit are pending.
+  are implemented and verified. The initial credential-handling correction was
+  committed as `bf25d02 harden local database credential setup`. Follow-up
+  temporary-file and password-input hardening is implemented and validated;
+  review and commit are pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -133,9 +135,9 @@ The Codex repository inspection recorded the following verified checkpoint:
   native `psql` transaction creates the role, sets its password, and grants its
   restricted access. Saved credentials remain available after a database
   failure, while a credential-file failure prevents role creation.
-- Thirteen Node.js regression tests passed. They use synthetic credentials,
-  temporary directories, and mocked boundaries; no failure-path test used the
-  real credential files or application role.
+- The initial correction's thirteen Node.js regression tests passed. They use
+  synthetic credentials, temporary directories, and mocked boundaries; no
+  failure-path test used the real credential files or application role.
 - A task-owned native `psql` password-setting probe completed within a
   transaction that was rolled back. The probe role was absent afterward, and
   its synthetic password did not appear in process arguments, SQL, or captured
@@ -149,6 +151,27 @@ The Codex repository inspection recorded the following verified checkpoint:
 - The PostgreSQL service is healthy and remains running. Prisma configuration,
   generation, migrations, and runtime database integration remain pending, and
   the documented Prisma dependency audit findings remain open.
+
+#### Temporary credential and password-input hardening — 2026-09-11
+
+- Temporary credentials now use the ignored
+  `.env.local.<unique-id>.tmp` naming pattern. The setup verifies ignore
+  protection before exclusively creating the temporary file, records ownership
+  before writing, removes task-owned partial files after failures, and reports
+  cleanup failures without deleting files it did not create.
+- Existing destination comparisons and replacement behavior remain in place.
+  The comparison immediately before replacement detects observed changes but
+  is not a lock and cannot guarantee detection of every concurrent edit.
+- Decoded carriage returns, newlines, and NUL characters are rejected before
+  persistent mutation and again before a native client process can start.
+  Ordinary URL-encoded password characters remain supported.
+- All twenty regression tests passed using only synthetic credentials,
+  temporary directories, and mocked process or persistence boundaries.
+  Disposable test resources were removed. No real setup, Docker, or database
+  operation was run for this follow-up.
+- Prisma configuration, generation, migrations, and runtime database
+  integration remain pending. The documented dependency audit findings remain
+  open.
 
 ## Prisma dependency foundation — 2026-09-09
 
