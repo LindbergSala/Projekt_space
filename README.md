@@ -260,8 +260,13 @@ shared client. It returns 404 outside development before importing Prisma. In
 development it runs one fixed, parameterized read-only query and returns
 `{"ok":true}` only for the expected application user and database; failures
 return 503 with `{"ok":false}`. Responses are not cached and expose no
-database identity or raw errors. One local HTTP GET returned 503 with
-`{"ok":false}`, so request-level connectivity and identity remain unverified.
-The route is not an application feature. Models, migrations, gameplay, and
-the Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md)
-remain pending.
+database identity or raw errors. Development-only server diagnostics log only
+the failing stage, allowlisted error codes, or identity-match booleans.
+The route was committed as `dbe3d75`. Its initial HTTP check returned 503;
+a follow-up GET also returned 503 with a query-stage `P2010`. The standalone
+verifier also returned `P2010`, and a credential-free TCP check of the local
+database endpoint returned `ECONNREFUSED`. The endpoint must be available
+before request-level identity can be verified; no service, credential, or
+permission was changed in response. The route is not an application feature.
+Models, migrations, gameplay, and the Prisma dependency audit findings in
+[PROJECT_STATUS.md](PROJECT_STATUS.md) remain pending.

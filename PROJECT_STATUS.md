@@ -59,10 +59,13 @@ The Codex repository inspection recorded the following verified checkpoint:
   standalone script executed a read-only Prisma query and was reviewed and
   committed as `fd7f489 feat: add read-only prisma connection verification`.
   The shared server-only Prisma client was reviewed and committed as
-  `feb6cf8 feat: add shared server-side prisma client`. A development-only
-  request diagnostic route has been added; its review and commit are pending.
-  Its first local HTTP check returned 503, so request-level database identity
-  remains unverified. Models, migrations, and gameplay remain pending.
+  `feb6cf8 feat: add shared server-side prisma client`. The development-only
+  diagnostic route was committed as
+  `dbe3d75 feat: add development-only prisma connectivity route`.
+  A follow-up request again returned 503; a contemporaneous check found that
+  the local database endpoint refused TCP connections. Safe diagnostic logging
+  is pending review and commit. Request-level identity, models, migrations,
+  and gameplay remain pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -270,10 +273,14 @@ The Codex repository inspection recorded the following verified checkpoint:
   mode. It runs a fixed, parameterized read-only identity query and has
   uncached, identity-free responses. One GET against the local development
   server returned HTTP 503 and `{"ok":false}` with `Cache-Control: no-store`.
-  The route's sanitized response does not identify whether import, connection,
-  query, or identity verification failed; request-level connectivity is not
-  verified. Models, migrations, gameplay, and the documented dependency audit
-  findings remain pending.
+  A follow-up with development-only, fixed-label diagnostics returned the same
+  HTTP result and logged `query` stage with allowlisted code `P2010`. The
+  existing standalone verifier also returned `P2010`; a credential-free TCP
+  check of `127.0.0.1:55432` returned `ECONNREFUSED`. The local database
+  endpoint was unavailable at that check, so no application-code correction
+  or repeat HTTP attempt was justified. Request-level identity remains
+  unverified. Models, migrations, gameplay, and the documented dependency
+  audit findings remain pending.
 
 ## Prisma dependency foundation — 2026-09-09
 
