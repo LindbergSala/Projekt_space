@@ -262,11 +262,12 @@ development it runs one fixed, parameterized read-only query and returns
 return 503 with `{"ok":false}`. Responses are not cached and expose no
 database identity or raw errors. Development-only server diagnostics log only
 the failing stage, allowlisted error codes, or identity-match booleans.
-The route was committed as `dbe3d75`. Its initial HTTP check returned 503;
-a follow-up GET also returned 503 with a query-stage `P2010`. The standalone
-verifier also returned `P2010`, and a credential-free TCP check of the local
-database endpoint returned `ECONNREFUSED`. The endpoint must be available
-before request-level identity can be verified; no service, credential, or
-permission was changed in response. The route is not an application feature.
-Models, migrations, gameplay, and the Prisma dependency audit findings in
-[PROJECT_STATUS.md](PROJECT_STATUS.md) remain pending.
+The route was committed as `dbe3d75` and safe diagnostics as `811487d`.
+Its earlier HTTP checks returned 503 while the local database endpoint refused
+TCP connections. With the existing PostgreSQL container running and healthy,
+one local GET returned HTTP 200, `{"ok":true}`, and `Cache-Control: no-store`.
+The route thereby verified the expected application user and database through
+a Next.js request; no code correction or credential change produced that
+result. The route is not an application feature. Models, migrations, gameplay,
+and the Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md)
+remain pending.

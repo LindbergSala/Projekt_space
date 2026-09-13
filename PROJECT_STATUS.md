@@ -62,9 +62,11 @@ The Codex repository inspection recorded the following verified checkpoint:
   `feb6cf8 feat: add shared server-side prisma client`. The development-only
   diagnostic route was committed as
   `dbe3d75 feat: add development-only prisma connectivity route`.
-  A follow-up request again returned 503; a contemporaneous check found that
-  the local database endpoint refused TCP connections. Safe diagnostic logging
-  is pending review and commit. Request-level identity, models, migrations,
+  Safe diagnostic logging was committed as
+  `811487d chore: add safe diagnostics to development db check`. Earlier
+  requests returned 503 while the database endpoint was unavailable. With the
+  existing container healthy, the development route returned HTTP 200 and
+  verified the expected request-level database identity. Models, migrations,
   and gameplay remain pending.
 - Other foundation documents still need reconciliation and integration.
 
@@ -278,9 +280,13 @@ The Codex repository inspection recorded the following verified checkpoint:
   existing standalone verifier also returned `P2010`; a credential-free TCP
   check of `127.0.0.1:55432` returned `ECONNREFUSED`. The local database
   endpoint was unavailable at that check, so no application-code correction
-  or repeat HTTP attempt was justified. Request-level identity remains
-  unverified. Models, migrations, gameplay, and the documented dependency
-  audit findings remain pending.
+  or repeat HTTP attempt was justified. Later, the existing PostgreSQL
+  container was observed running and healthy at `127.0.0.1:55432`. One GET
+  returned HTTP 200 and `{"ok":true}` with `Cache-Control: no-store`, verifying
+  the expected application role and database through Next.js. No route code,
+  credentials, roles, or permissions were changed for this success. Models,
+  migrations, gameplay, and the documented dependency audit findings remain
+  pending.
 
 ## Prisma dependency foundation — 2026-09-09
 
