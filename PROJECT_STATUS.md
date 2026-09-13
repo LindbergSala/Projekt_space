@@ -56,9 +56,11 @@ The Codex repository inspection recorded the following verified checkpoint:
   `ec7341a feat: add minimal prisma cli configuration`. A `prisma-client-js`
   generator was added and the client was generated successfully, reviewed and
   committed as `0f18b77 feat: configure prisma client generation`. A
-  standalone script verified a real read-only Prisma connection; review and
-  commit are pending. Migrations and Next.js application integration remain
-  separate pending work.
+  standalone script executed a read-only Prisma query and was reviewed and
+  committed as `fd7f489 feat: add read-only prisma connection verification`.
+  A shared server-only Prisma client module has been added; its review and
+  commit are pending. Models, migrations, and request-level Next.js database
+  use remain separate pending work.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -238,11 +240,30 @@ The Codex repository inspection recorded the following verified checkpoint:
   connected and queried successfully as `projekt_space_app` on
   `projekt_space_dev` both times, and a deliberately mismatched `DATABASE_URL`
   was rejected before any connection attempt with a sanitized message. The
-  adapter's internally owned pool was released through `prisma.$disconnect()`
-  in a `finally` block on both the success and failure paths.
+  rejected URL therefore did not test pool cleanup after a database error.
+  Code inspection shows that `prisma.$disconnect()` runs in a `finally` block
+  after client construction; database-error cleanup was not exercised by that
+  test.
 - This verifies standalone Prisma connectivity only. The script is not wired
   into the Next.js application; models, migrations, application integration,
   and the documented Prisma dependency audit findings remain open.
+
+#### Shared server-side Prisma client — 2026-09-13
+
+- `lib/prisma.js` uses the installed `PrismaClient` and `PrismaPg` with
+  `process.env.DATABASE_URL`, without importing credential files, `dotenv`, or
+  Prisma CLI configuration. Its `server-only` import guards against Client
+  Component use, and a missing URL error does not include its value.
+- The module reuses a `globalThis` client during development hot reload and
+  normal module caching in production. Its adapter is created from a
+  configuration object and owns its pool; no per-request disconnect or
+  import-time connection/query is present.
+- `npm run lint` passed. The single `npm run build` attempt failed before app
+  compilation because Windows policy blocked the installed SWC binary and
+  Next.js's fallback download failed certificate verification. No application
+  entry point imports the module yet, so Next.js request-level database access
+  remains unverified. Models, migrations, application integration, and the
+  documented dependency audit findings remain pending.
 
 ## Prisma dependency foundation — 2026-09-09
 

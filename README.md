@@ -203,8 +203,9 @@ and remain unresolved.
 ### Standalone Prisma connectivity check
 
 `scripts/verify-prisma-connection.mjs` is a small, repeatable script that
-confirms Prisma can open a real, read-only connection through the installed
-`@prisma/adapter-pg` driver adapter (`PrismaPg`). It loads only `.env.local`
+confirms Prisma can open a real connection and execute a read-only query
+through the installed `@prisma/adapter-pg` driver adapter (`PrismaPg`). It
+loads only `.env.local`
 (never the administrative `.env.postgres.local`), resolving both that file
 and its `DATABASE_URL` requirement relative to the script's own location
 rather than `prisma.config.mjs` or the caller's working directory. It reuses
@@ -219,8 +220,11 @@ query (`SELECT 1`, `current_user`, `current_database()`), verifying the
 returned identity before reporting success. Failures print a sanitized
 message only—either the reviewed validation error or a bare error code—and
 exit non-zero; the connection URL and password are never printed. The
-adapter's pool is always released through `prisma.$disconnect()` in a
-`finally` block, on both the success and failure paths.
+adapter's internally owned pool is released through `prisma.$disconnect()` in
+a `finally` block after a client is created. The mismatched-URL test was
+rejected before client construction or connection, so it did not exercise pool
+cleanup after a database error; that cleanup path is supported by code
+inspection, not an executed failure-path test.
 
 Run it with:
 
@@ -230,8 +234,24 @@ node scripts/verify-prisma-connection.mjs
 
 This passed against the running local PostgreSQL service, confirming Prisma
 can connect, authenticate, and query as `projekt_space_app` on
-`projekt_space_dev`. This verifies standalone Prisma connectivity only: the
-script is not wired into the Next.js application, no models, migrations, or
-application integration exist yet, and the documented Prisma dependency audit
-findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) remain open and
-unresolved.
+`projekt_space_dev`. The check was reviewed and committed as `fd7f489`.
+
+### Shared server-side Prisma client
+
+`lib/prisma.js` exports a shared `PrismaClient` using `PrismaPg` and the
+server-provided `DATABASE_URL`. Import it only from Next.js server code. Its
+`server-only` import prevents use from Client Components; Next.js loads the
+environment, so the module does not load credential files or Prisma CLI
+configuration itself. A missing URL raises an error naming only the variable.
+
+In development, the client is cached on `globalThis` across hot reloads. In
+production, normal module caching reuses it. The adapter is constructed from
+a connection configuration and owns its pool; do not disconnect the shared
+client after individual requests. Code inspection found no connection or query
+during module import. Lint passed, but this task's production build was blocked
+before app compilation by the local SWC binary policy and a failed certificate
+check during Next.js's fallback download. The module is not imported by an
+application entry point, so request-level database access remains unverified
+regardless of build outcome. Models, migrations, and application use remain
+separate tasks. The documented Prisma dependency audit findings in
+[PROJECT_STATUS.md](PROJECT_STATUS.md) remain unresolved.
