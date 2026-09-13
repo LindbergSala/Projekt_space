@@ -248,10 +248,20 @@ In development, the client is cached on `globalThis` across hot reloads. In
 production, normal module caching reuses it. The adapter is constructed from
 a connection configuration and owns its pool; do not disconnect the shared
 client after individual requests. Code inspection found no connection or query
-during module import. Lint passed, but this task's production build was blocked
-before app compilation by the local SWC binary policy and a failed certificate
-check during Next.js's fallback download. The module is not imported by an
-application entry point, so request-level database access remains unverified
-regardless of build outcome. Models, migrations, and application use remain
-separate tasks. The documented Prisma dependency audit findings in
-[PROJECT_STATUS.md](PROJECT_STATUS.md) remain unresolved.
+during module import. The module was reviewed and committed as `feb6cf8`.
+Its initial production build failed when Windows blocked native SWC and the
+fallback download failed certificate verification. A later build passed with
+`NODE_USE_SYSTEM_CA=1` scoped to that process; no fallback download appeared,
+so the flag was not proven necessary for that success. The build did not
+exercise request-level Prisma access.
+
+`GET /api/dev/db-check` is a development-only diagnostic route using this
+shared client. It returns 404 outside development before importing Prisma. In
+development it runs one fixed, parameterized read-only query and returns
+`{"ok":true}` only for the expected application user and database; failures
+return 503 with `{"ok":false}`. Responses are not cached and expose no
+database identity or raw errors. One local HTTP GET returned 503 with
+`{"ok":false}`, so request-level connectivity and identity remain unverified.
+The route is not an application feature. Models, migrations, gameplay, and
+the Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md)
+remain pending.

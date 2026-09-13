@@ -58,9 +58,11 @@ The Codex repository inspection recorded the following verified checkpoint:
   committed as `0f18b77 feat: configure prisma client generation`. A
   standalone script executed a read-only Prisma query and was reviewed and
   committed as `fd7f489 feat: add read-only prisma connection verification`.
-  A shared server-only Prisma client module has been added; its review and
-  commit are pending. Models, migrations, and request-level Next.js database
-  use remain separate pending work.
+  The shared server-only Prisma client was reviewed and committed as
+  `feb6cf8 feat: add shared server-side prisma client`. A development-only
+  request diagnostic route has been added; its review and commit are pending.
+  Its first local HTTP check returned 503, so request-level database identity
+  remains unverified. Models, migrations, and gameplay remain pending.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -258,12 +260,20 @@ The Codex repository inspection recorded the following verified checkpoint:
   normal module caching in production. Its adapter is created from a
   configuration object and owns its pool; no per-request disconnect or
   import-time connection/query is present.
-- `npm run lint` passed. The single `npm run build` attempt failed before app
-  compilation because Windows policy blocked the installed SWC binary and
-  Next.js's fallback download failed certificate verification. No application
-  entry point imports the module yet, so Next.js request-level database access
-  remains unverified. Models, migrations, application integration, and the
-  documented dependency audit findings remain pending.
+- `npm run lint` passed. The initial `npm run build` attempt failed before app
+  compilation because Windows policy blocked native SWC and the fallback
+  download failed certificate verification. A later production build passed
+  with `NODE_USE_SYSTEM_CA=1` scoped to its process. No fallback download was
+  observed in that successful build, so the flag was not proven necessary.
+  The build did not exercise request-level database access.
+- `GET /api/dev/db-check` uses this client only after checking for development
+  mode. It runs a fixed, parameterized read-only identity query and has
+  uncached, identity-free responses. One GET against the local development
+  server returned HTTP 503 and `{"ok":false}` with `Cache-Control: no-store`.
+  The route's sanitized response does not identify whether import, connection,
+  query, or identity verification failed; request-level connectivity is not
+  verified. Models, migrations, gameplay, and the documented dependency audit
+  findings remain pending.
 
 ## Prisma dependency foundation — 2026-09-09
 
