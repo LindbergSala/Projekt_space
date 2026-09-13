@@ -68,6 +68,16 @@ The Codex repository inspection recorded the following verified checkpoint:
   existing container healthy, the development route returned HTTP 200 and
   verified the expected request-level database identity. Models, migrations,
   and gameplay remain pending.
+- `better-auth` `1.7.4` is pinned as a runtime dependency. Its Prisma adapter
+  export and `disableImplicitLinking` option were confirmed in the installed
+  package; offline imports, the dependency tree, lint, and the production build
+  passed. A fresh audit still reports the four previously documented
+  high-severity Prisma-chain package findings and no new findings. Registry
+  access used process-scoped Node system CA support without changing TLS or
+  persistent settings. Authentication configuration, schema, migrations,
+  Google OAuth setup, and email delivery remain pending. Installation and build
+  success do not verify authentication; this dependency change awaits review
+  and commit.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
