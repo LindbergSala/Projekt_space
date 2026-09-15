@@ -24,6 +24,7 @@ const APP_ENV_PATH = path.join(ROOT_DIRECTORY, ".env.local")
 const DATABASE_HOST = "127.0.0.1"
 const DATABASE_PORT = 55432
 const DATABASE_NAME = "projekt_space_dev"
+const SHADOW_DATABASE_NAME = "projekt_space_shadow"
 const ADMIN_ROLE = "projekt_space_admin"
 const APP_ROLE = "projekt_space_app"
 const EXAMPLE_PASSWORD = "replace-with-generated-password"
@@ -91,17 +92,20 @@ export function parseUniqueEnvValue(source, name, { required = false } = {}) {
   return value
 }
 
-export function parseCompatibleDatabaseUrl(value) {
+function parseCompatibleLocalDatabaseUrl(value, {
+  databaseName,
+  variableName,
+}) {
   let url
 
   try {
     url = new URL(value)
   } catch {
-    fail("DATABASE_URL is not a valid URL.")
+    fail(`${variableName} is not a valid URL.`)
   }
 
   if (url.search.length > 0 || url.hash.length > 0) {
-    fail("DATABASE_URL query parameters and fragments are not supported.")
+    fail(`${variableName} query parameters and fragments are not supported.`)
   }
 
   let username
@@ -113,26 +117,40 @@ export function parseCompatibleDatabaseUrl(value) {
     password = decodeURIComponent(url.password)
     database = decodeURIComponent(url.pathname.slice(1))
   } catch {
-    fail("DATABASE_URL contains invalid URL encoding.")
+    fail(`${variableName} contains invalid URL encoding.`)
   }
 
   const compatible =
     url.protocol === "postgresql:" &&
     url.hostname === DATABASE_HOST &&
     url.port === String(DATABASE_PORT) &&
-    database === DATABASE_NAME &&
+    database === databaseName &&
     username === APP_ROLE &&
     password.length > 0
 
   if (!compatible) {
-    fail("DATABASE_URL targets unexpected local database settings.")
+    fail(`${variableName} targets unexpected local database settings.`)
   }
 
   if (password === EXAMPLE_PASSWORD) {
-    fail("DATABASE_URL still contains the example password.")
+    fail(`${variableName} still contains the example password.`)
   }
 
   return validatePasswordForNativeInput(password)
+}
+
+export function parseCompatibleDatabaseUrl(value) {
+  return parseCompatibleLocalDatabaseUrl(value, {
+    databaseName: DATABASE_NAME,
+    variableName: "DATABASE_URL",
+  })
+}
+
+export function parseCompatibleShadowDatabaseUrl(value) {
+  return parseCompatibleLocalDatabaseUrl(value, {
+    databaseName: SHADOW_DATABASE_NAME,
+    variableName: "SHADOW_DATABASE_URL",
+  })
 }
 
 export function validatePasswordForNativeInput(password) {
@@ -147,22 +165,42 @@ export function validatePasswordForNativeInput(password) {
   return password
 }
 
-export function createDatabaseUrl(password) {
+function createLocalDatabaseUrl(password, databaseName) {
   return (
     `postgresql://${encodeURIComponent(APP_ROLE)}:` +
     `${encodeURIComponent(password)}@${DATABASE_HOST}:${DATABASE_PORT}/` +
-    encodeURIComponent(DATABASE_NAME)
+    encodeURIComponent(databaseName)
   )
 }
 
-export function appendDatabaseUrl(source, databaseUrl) {
+export function createDatabaseUrl(password) {
+  return createLocalDatabaseUrl(password, DATABASE_NAME)
+}
+
+export function createShadowDatabaseUrl(password) {
+  return createLocalDatabaseUrl(password, SHADOW_DATABASE_NAME)
+}
+
+function appendEnvironmentValue(source, name, value) {
   const content = source ?? ""
   const newline = content.includes("\r\n") ? "\r\n" : "\n"
   const prefix = content.length === 0 || content.endsWith("\n")
     ? content
     : `${content}${newline}`
 
-  return `${prefix}DATABASE_URL=${databaseUrl}${newline}`
+  return `${prefix}${name}=${value}${newline}`
+}
+
+export function appendDatabaseUrl(source, databaseUrl) {
+  return appendEnvironmentValue(source, "DATABASE_URL", databaseUrl)
+}
+
+export function appendShadowDatabaseUrl(source, shadowDatabaseUrl) {
+  return appendEnvironmentValue(
+    source,
+    "SHADOW_DATABASE_URL",
+    shadowDatabaseUrl,
+  )
 }
 
 async function readOptionalFile(filePath) {
@@ -322,6 +360,57 @@ export async function reconcileRoleSetup({
   return { created: true, credentialsWritten: databaseUrl === null }
 }
 
+export async function reconcileShadowCredential({
+  appSource,
+  password,
+  persistCredentials,
+}) {
+  const shadowDatabaseUrl = parseUniqueEnvValue(
+    appSource ?? "",
+    "SHADOW_DATABASE_URL",
+  )
+
+  if (shadowDatabaseUrl !== null) {
+    const shadowPassword = parseCompatibleShadowDatabaseUrl(shadowDatabaseUrl)
+
+    if (shadowPassword !== password) {
+      fail("DATABASE_URL and SHADOW_DATABASE_URL use different credentials.")
+    }
+
+    return { credentialsWritten: false }
+  }
+
+  const nextSource = appendShadowDatabaseUrl(
+    appSource,
+    createShadowDatabaseUrl(password),
+  )
+  await persistCredentials({
+    expectedSource: appSource,
+    nextSource,
+  })
+
+  return { credentialsWritten: true }
+}
+
+export async function reconcileShadowDatabase({
+  existingOwner,
+  createDatabase,
+  verifyCreatedDatabase,
+}) {
+  if (existingOwner !== null) {
+    if (existingOwner !== APP_ROLE) {
+      fail("The shadow database has an unexpected owner.")
+    }
+
+    return { created: false }
+  }
+
+  await createDatabase()
+  await verifyCreatedDatabase()
+
+  return { created: true }
+}
+
 function assertIgnored(relativePath) {
   const result = spawnSync("git", ["check-ignore", "--quiet", relativePath], {
     cwd: ROOT_DIRECTORY,
@@ -334,11 +423,31 @@ function assertIgnored(relativePath) {
   }
 }
 
-function clientOptions(user, password) {
+function assertUntracked(relativePath) {
+  const result = spawnSync(
+    "git",
+    ["ls-files", "--error-unmatch", "--", relativePath],
+    {
+      cwd: ROOT_DIRECTORY,
+      stdio: "ignore",
+      windowsHide: true,
+    },
+  )
+
+  if (result.status === 0) {
+    fail(`${relativePath} is tracked by Git; no credentials were written.`)
+  }
+
+  if (result.status !== 1) {
+    fail(`The Git tracking state for ${relativePath} could not be verified.`)
+  }
+}
+
+function clientOptions(user, password, database = DATABASE_NAME) {
   return {
     host: DATABASE_HOST,
     port: DATABASE_PORT,
-    database: DATABASE_NAME,
+    database,
     user,
     password,
     ssl: false,
@@ -357,8 +466,8 @@ async function closeClient(client) {
   }
 }
 
-async function connectClient(user, password) {
-  const client = new Client(clientOptions(user, password))
+async function connectClient(user, password, database = DATABASE_NAME) {
+  const client = new Client(clientOptions(user, password, database))
 
   try {
     await client.connect()
@@ -369,7 +478,11 @@ async function connectClient(user, password) {
   }
 }
 
-async function verifyIdentity(client, expectedUser) {
+async function verifyIdentity(
+  client,
+  expectedUser,
+  expectedDatabase = DATABASE_NAME,
+) {
   const result = await client.query(
     "SELECT current_user AS user_name, current_database() AS database_name",
   )
@@ -377,7 +490,7 @@ async function verifyIdentity(client, expectedUser) {
 
   if (
     identity?.user_name !== expectedUser ||
-    identity?.database_name !== DATABASE_NAME
+    identity?.database_name !== expectedDatabase
   ) {
     fail("Database identity verification failed.")
   }
@@ -398,6 +511,32 @@ async function verifyBasicApplicationAccess(password) {
   }
 }
 
+async function verifyShadowDatabaseAccess(password) {
+  const appClient = await connectClient(
+    APP_ROLE,
+    password,
+    SHADOW_DATABASE_NAME,
+  )
+
+  try {
+    await verifyIdentity(appClient, APP_ROLE, SHADOW_DATABASE_NAME)
+    const result = await appClient.query(
+      `SELECT
+         has_database_privilege(current_user, current_database(), 'CREATE')
+           AS database_create,
+         has_schema_privilege(current_user, 'public', 'CREATE')
+           AS schema_create`,
+    )
+    const permissions = result.rows[0]
+
+    if (!permissions?.database_create || !permissions?.schema_create) {
+      fail("The application role cannot reset its shadow database.")
+    }
+  } finally {
+    await closeClient(appClient)
+  }
+}
+
 async function getRole(adminClient) {
   const result = await adminClient.query(
     `SELECT oid, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole,
@@ -408,6 +547,38 @@ async function getRole(adminClient) {
   )
 
   return result.rows[0] ?? null
+}
+
+async function getShadowDatabaseOwner(adminClient) {
+  const result = await adminClient.query(
+    `SELECT owner_role.rolname AS owner_name
+       FROM pg_catalog.pg_database AS database_entry
+       JOIN pg_catalog.pg_roles AS owner_role
+         ON owner_role.oid = database_entry.datdba
+      WHERE database_entry.datname = $1`,
+    [SHADOW_DATABASE_NAME],
+  )
+
+  return result.rows[0]?.owner_name ?? null
+}
+
+async function ensureShadowDatabase(adminClient) {
+  const existingOwner = await getShadowDatabaseOwner(adminClient)
+
+  return reconcileShadowDatabase({
+    existingOwner,
+    createDatabase: async () => {
+      await adminClient.query(
+        `CREATE DATABASE ${SHADOW_DATABASE_NAME} OWNER ${APP_ROLE}`,
+      )
+    },
+    verifyCreatedDatabase: async () => {
+      const owner = await getShadowDatabaseOwner(adminClient)
+      if (owner !== APP_ROLE) {
+        fail("The new shadow database owner could not be verified.")
+      }
+    },
+  })
 }
 
 async function inspectPublicPrivileges(adminClient) {
@@ -482,19 +653,31 @@ async function assertCompatibleRole(adminClient, role) {
     fail("The application role belongs to another role.")
   }
 
-  const ownership = await adminClient.query(
-    `SELECT
-       EXISTS(
-         SELECT 1 FROM pg_catalog.pg_database WHERE datdba = $1
-       ) AS owns_database,
-       EXISTS(
-         SELECT 1 FROM pg_catalog.pg_namespace WHERE nspowner = $1
-       ) AS owns_schema`,
+  const ownedDatabases = await adminClient.query(
+    `SELECT datname
+       FROM pg_catalog.pg_database
+      WHERE datdba = $1
+      ORDER BY datname`,
+    [role.oid],
+  )
+  const unexpectedDatabase = ownedDatabases.rows.find(
+    (row) => row.datname !== SHADOW_DATABASE_NAME,
+  )
+
+  if (unexpectedDatabase || ownedDatabases.rowCount > 1) {
+    fail("The application role owns an unexpected database.")
+  }
+
+  const ownedSchemas = await adminClient.query(
+    `SELECT 1
+       FROM pg_catalog.pg_namespace
+      WHERE nspowner = $1
+      LIMIT 1`,
     [role.oid],
   )
 
-  if (ownership.rows[0]?.owns_database || ownership.rows[0]?.owns_schema) {
-    fail("The application role owns a database or schema.")
+  if (ownedSchemas.rowCount !== 0) {
+    fail("The application role owns an unexpected schema.")
   }
 
   const defaultPrivileges = await adminClient.query(
@@ -716,6 +899,8 @@ function sanitizedFailure(error) {
 export async function runLocalSetup() {
   assertIgnored(".env.local")
   assertIgnored(".env.postgres.local")
+  assertUntracked(".env.local")
+  assertUntracked(".env.postgres.local")
 
   const adminSource = await readOptionalFile(ADMIN_ENV_PATH)
   if (adminSource === null) {
@@ -735,8 +920,23 @@ export async function runLocalSetup() {
 
   // Parse and validate before connecting or mutating either persistent target.
   const databaseUrl = parseUniqueEnvValue(appSource ?? "", "DATABASE_URL")
+  const shadowDatabaseUrl = parseUniqueEnvValue(
+    appSource ?? "",
+    "SHADOW_DATABASE_URL",
+  )
+  let databasePassword
   if (databaseUrl !== null) {
-    parseCompatibleDatabaseUrl(databaseUrl)
+    databasePassword = parseCompatibleDatabaseUrl(databaseUrl)
+  }
+  if (shadowDatabaseUrl !== null) {
+    if (databasePassword === undefined) {
+      fail("SHADOW_DATABASE_URL exists without DATABASE_URL.")
+    }
+
+    const shadowPassword = parseCompatibleShadowDatabaseUrl(shadowDatabaseUrl)
+    if (shadowPassword !== databasePassword) {
+      fail("DATABASE_URL and SHADOW_DATABASE_URL use different credentials.")
+    }
   }
 
   await access(ROOT_DIRECTORY, fsConstants.W_OK).catch(() => {
@@ -787,14 +987,45 @@ export async function runLocalSetup() {
       },
     })
 
+    const savedSource = (await readOptionalFile(APP_ENV_PATH)) ?? ""
     const savedUrl = parseUniqueEnvValue(
-      (await readOptionalFile(APP_ENV_PATH)) ?? "",
+      savedSource,
       "DATABASE_URL",
       { required: true },
     )
     const savedPassword = parseCompatibleDatabaseUrl(savedUrl)
+    const finalRole = await getRole(adminClient)
+    if (!finalRole) {
+      fail("The application role could not be verified.")
+    }
 
+    const shadowDatabase = await ensureShadowDatabase(adminClient)
+    const shadowCredential = await reconcileShadowCredential({
+      appSource: savedSource,
+      password: savedPassword,
+      persistCredentials: async ({ expectedSource, nextSource }) => {
+        await persistCredentialFile({
+          filePath: APP_ENV_PATH,
+          expectedSource,
+          nextSource,
+        })
+      },
+    })
+
+    const finalAppSource = (await readOptionalFile(APP_ENV_PATH)) ?? ""
+    const savedShadowUrl = parseUniqueEnvValue(
+      finalAppSource,
+      "SHADOW_DATABASE_URL",
+      { required: true },
+    )
+    const savedShadowPassword = parseCompatibleShadowDatabaseUrl(savedShadowUrl)
+    if (savedShadowPassword !== savedPassword) {
+      fail("The saved database URLs use different credentials.")
+    }
+
+    finalPermissions = await verifyRolePermissions(adminClient, finalRole)
     await verifyBasicApplicationAccess(savedPassword)
+    await verifyShadowDatabaseAccess(savedPassword)
     await verifyIncorrectPasswordRejected()
     await verifyTableCreationRejected(savedPassword, adminClient)
     await adminClient.query("SELECT 1")
@@ -809,8 +1040,20 @@ export async function runLocalSetup() {
         ? "Local application credentials: persisted before role creation."
         : "Local application credentials: reused without rotation.",
     )
+    report(
+      shadowDatabase.created
+        ? "Shadow database: created with the application role as owner."
+        : "Shadow database: existing owner verified without mutation.",
+    )
+    report(
+      shadowCredential.credentialsWritten
+        ? "Shadow database credential: added to the existing ignored local file."
+        : "Shadow database credential: reused without change.",
+    )
     report("Application authentication: correct password accepted; incorrect password rejected.")
     report("Application identity and SELECT 1: verified.")
+    report("Shadow database ownership, authentication, and reset access: verified.")
+    report("Application role CREATEDB, superuser, role creation, replication, and bypass-RLS: absent.")
     report("Database CONNECT and public-schema USAGE: verified as direct grants.")
     report("Effective database and public-schema CREATE: absent.")
     report(

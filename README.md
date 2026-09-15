@@ -101,26 +101,33 @@ node scripts/setup-local-db-role.mjs
 ```
 
 The script reads the administrative password from `.env.postgres.local` only
-for local role setup. It writes the restricted application's `DATABASE_URL` to
-the ignored `.env.local` file. Neither credential file may be committed or
-shared, and the application must not use the administrative role.
+for local provisioning. It writes the restricted application's `DATABASE_URL`
+and `SHADOW_DATABASE_URL` to the ignored `.env.local` file. The two URLs reuse
+the same application-role credentials but target the separate
+`projekt_space_dev` and `projekt_space_shadow` databases. Neither credential
+file may be committed or shared, and the application must not use the
+administrative role.
 
 Environment values are parsed with `dotenv`. The setup rejects duplicate or
-ambiguous `DATABASE_URL` assignments, the documented example password, URL
-parameters or fragments, and connection targets other than the expected local
-database before it can change credentials or the database. Passwords whose
-decoded values contain carriage returns, newlines, or NUL characters are also
-rejected before persistence and again at the native-client boundary.
+ambiguous database URL assignments, the documented example password, URL
+parameters or fragments, mismatched credentials, and connection targets other
+than the expected local databases before it can change credentials or the
+database. Passwords whose decoded values contain carriage returns, newlines,
+or NUL characters are also rejected before persistence and again at the
+native-client boundary.
 
 The `projekt_space_app` role can log in, connect to `projekt_space_dev`, and
 use its `public` schema. It is not a superuser, cannot create databases or
-roles, cannot bypass row-level security, owns no database or schema, and is not
-granted database or schema creation rights. PostgreSQL's effective `PUBLIC`
-privileges are inspected and reported separately.
+roles, and cannot bypass row-level security. It owns only the dedicated
+`projekt_space_shadow` database so Prisma Migrate can reset that database; it
+has no database or schema creation rights in `projekt_space_dev`. PostgreSQL's
+effective `PUBLIC` privileges are inspected and reported separately.
 
-Rerunning the command reuses compatible credentials and verifies the role
-without rotating its password. A conflicting role or `DATABASE_URL` causes a
-sanitized failure instead of being overwritten or reset.
+After the application role exists, the setup creates
+`projekt_space_shadow OWNER projekt_space_app` if it is absent. Rerunning the
+command verifies the existing owner, reuses compatible credentials, and does
+not rotate the password or recreate the database. A conflicting role, database
+owner, or URL causes a sanitized failure instead of being overwritten or reset.
 
 For a new role, the generated credentials are written through an ignored
 `.env.local.<unique-id>.tmp` file before one native `psql` transaction creates
@@ -139,9 +146,10 @@ Run the credential-handling regression tests with:
 node --test tests/setup-local-db-role.test.mjs
 ```
 
-Migration credentials, Prisma client generation, and future table or default
-privileges are separate implementation tasks. Minimal Prisma CLI configuration
-and schema validation are described below.
+Permissions for changing the `projekt_space_dev` schema, migration application,
+Prisma client generation, and future table or default privileges are separate
+implementation tasks. Prisma CLI configuration and schema validation are
+described below.
 
 ## Prisma configuration
 
@@ -153,10 +161,14 @@ the caller's working directory. It loads `.env.local` with the installed
 printed, and it never reads the administrative `.env.postgres.local` file. The
 restricted application `DATABASE_URL` is required: if it is missing, Prisma's
 own `env()` helper throws an error naming only the missing variable, never its
-value.
+value. `SHADOW_DATABASE_URL` is optional for non-migration commands. When it is
+present, Prisma uses it as `datasource.shadowDatabaseUrl`, and a fail-fast check
+rejects configurations where the main and shadow URLs identify the same host,
+port, and database without including either URL in the error.
 
-`prisma/schema.prisma` defines a `prisma-client-js` generator and a PostgreSQL
-datasource, with no models, enums, migrations, or seed data yet:
+`prisma/schema.prisma` defines a `prisma-client-js` generator, a PostgreSQL
+datasource, and the minimum Better Auth models. It has no gameplay models,
+enums, migrations, or seed data yet:
 
 ```prisma
 generator client {
@@ -177,9 +189,16 @@ location (`node_modules/@prisma/client`, re-exporting
 `node_modules/` ignore rule, so no `output` path or `.gitignore` change was
 needed.
 
-Its connection URL is supplied entirely through `prisma.config.mjs`
-(`datasource.url`), which is the configuration API this pinned Prisma version
-supports.
+Its main and optional shadow connection URLs are supplied entirely through
+`prisma.config.mjs` (`datasource.url` and
+`datasource.shadowDatabaseUrl`), which is the configuration API this pinned
+Prisma version supports.
+
+The dedicated shadow database lets Prisma Migrate reset its comparison schema
+without granting `CREATEDB` to the application role. Migration development
+also needs permission to maintain Prisma's migration metadata in
+`projekt_space_dev`; that separate permission or migration identity is not yet
+configured.
 
 Validate the schema and generate the client with the repository-local Prisma
 CLI, without letting any tool install or download a CLI:
@@ -189,16 +208,17 @@ node_modules/.bin/prisma validate
 node_modules/.bin/prisma generate
 ```
 
-On Windows PowerShell, use `.\node_modules\.bin\prisma.cmd` instead. Both
-commands passed without opening a database connection: `validate` confirms
-`prisma.config.mjs` loads, `DATABASE_URL` resolves, and the schema is valid;
-`generate` produced the client above even with no models defined. A
-`require('@prisma/client')` check confirmed `PrismaClient` and `Prisma` are
-exported, without instantiating a client. Neither command proves working
-runtime database integration. Migrations and runtime integration remain
-separate, unimplemented tasks. The open Prisma dependency audit findings in
-[PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this configuration
-and remain unresolved.
+On Windows PowerShell, use `.\node_modules\.bin\prisma.cmd` instead. Validation
+passes without opening a database connection and confirms that
+`prisma.config.mjs` loads, its configured URLs resolve, and the schema is
+valid. Client generation and a `require('@prisma/client')` import check passed
+before the authentication models were added; regeneration for the current
+schema remains pending. The earlier import check confirmed `PrismaClient` and
+`Prisma` are exported, without instantiating a client. Neither command proves
+working runtime database integration. Migrations and runtime integration
+remain separate, unimplemented tasks. The open Prisma dependency audit
+findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this
+configuration and remain unresolved.
 
 ### Standalone Prisma connectivity check
 

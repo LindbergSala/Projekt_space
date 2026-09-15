@@ -9,17 +9,23 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import {
   SetupError,
   appendDatabaseUrl,
+  appendShadowDatabaseUrl,
   createRoleWithNativeClient,
   createDatabaseUrl,
+  createShadowDatabaseUrl,
   createTemporaryCredentialPath,
   parseCompatibleDatabaseUrl,
+  parseCompatibleShadowDatabaseUrl,
   parseUniqueEnvValue,
   persistCredentialFile,
   reconcileRoleSetup,
+  reconcileShadowCredential,
+  reconcileShadowDatabase,
 } from "../scripts/setup-local-db-role.mjs"
 
 const TEST_PASSWORD = "synthetic-test-password"
 const VALID_URL = createDatabaseUrl(TEST_PASSWORD)
+const VALID_SHADOW_URL = createShadowDatabaseUrl(TEST_PASSWORD)
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url))
 const SCRIPT_PATH = path.resolve(
   TEST_DIRECTORY,
@@ -149,6 +155,113 @@ test("ordinary URL-encoded password characters remain supported", () => {
     parseCompatibleDatabaseUrl(createDatabaseUrl(password)),
     password,
   )
+})
+
+test("shadow URL requires the dedicated database and reuses the password", () => {
+  assert.equal(
+    parseCompatibleShadowDatabaseUrl(VALID_SHADOW_URL),
+    TEST_PASSWORD,
+  )
+  assert.throws(
+    () => parseCompatibleShadowDatabaseUrl(VALID_URL),
+    /SHADOW_DATABASE_URL targets unexpected local database settings/,
+  )
+})
+
+test("missing shadow credentials are appended without changing other values", async () => {
+  const appSource = `UNRELATED_SETTING=preserved\nDATABASE_URL=${VALID_URL}\n`
+  let persisted
+
+  const result = await reconcileShadowCredential({
+    appSource,
+    password: TEST_PASSWORD,
+    persistCredentials: async (value) => {
+      persisted = value
+    },
+  })
+
+  assert.equal(result.credentialsWritten, true)
+  assert.equal(persisted.expectedSource, appSource)
+  assert.equal(
+    persisted.nextSource,
+    appendShadowDatabaseUrl(appSource, VALID_SHADOW_URL),
+  )
+  assert.match(persisted.nextSource, /^UNRELATED_SETTING=preserved$/m)
+})
+
+test("compatible shadow credentials are reused without a write", async () => {
+  const appSource =
+    `DATABASE_URL=${VALID_URL}\nSHADOW_DATABASE_URL=${VALID_SHADOW_URL}\n`
+  let persistCount = 0
+
+  const result = await reconcileShadowCredential({
+    appSource,
+    password: TEST_PASSWORD,
+    persistCredentials: async () => {
+      persistCount += 1
+    },
+  })
+
+  assert.equal(result.credentialsWritten, false)
+  assert.equal(persistCount, 0)
+})
+
+test("shadow credentials with another password are rejected before writing", async () => {
+  const appSource =
+    `DATABASE_URL=${VALID_URL}\n` +
+    `SHADOW_DATABASE_URL=${createShadowDatabaseUrl("different-password")}\n`
+  let persistCount = 0
+
+  await assert.rejects(
+    reconcileShadowCredential({
+      appSource,
+      password: TEST_PASSWORD,
+      persistCredentials: async () => {
+        persistCount += 1
+      },
+    }),
+    /use different credentials/,
+  )
+
+  assert.equal(persistCount, 0)
+})
+
+test("shadow database reconciliation is idempotent and rejects another owner", async () => {
+  let createCount = 0
+  let verifyCount = 0
+  const callbacks = {
+    createDatabase: async () => {
+      createCount += 1
+    },
+    verifyCreatedDatabase: async () => {
+      verifyCount += 1
+    },
+  }
+
+  const existing = await reconcileShadowDatabase({
+    existingOwner: "projekt_space_app",
+    ...callbacks,
+  })
+  assert.equal(existing.created, false)
+  assert.equal(createCount, 0)
+  assert.equal(verifyCount, 0)
+
+  await assert.rejects(
+    reconcileShadowDatabase({
+      existingOwner: "unexpected_owner",
+      ...callbacks,
+    }),
+    /unexpected owner/,
+  )
+  assert.equal(createCount, 0)
+
+  const created = await reconcileShadowDatabase({
+    existingOwner: null,
+    ...callbacks,
+  })
+  assert.equal(created.created, true)
+  assert.equal(createCount, 1)
+  assert.equal(verifyCount, 1)
 })
 
 test("invalid input causes no persistent or database writes", async () => {
