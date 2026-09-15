@@ -74,10 +74,16 @@ The Codex repository inspection recorded the following verified checkpoint:
   passed. A fresh audit still reports the four previously documented
   high-severity Prisma-chain package findings and no new findings. Registry
   access used process-scoped Node system CA support without changing TLS or
-  persistent settings. Authentication configuration, schema, migrations,
-  Google OAuth setup, and email delivery remain pending. Installation and build
-  success do not verify authentication; this dependency change awaits review
-  and commit.
+  persistent settings. The minimum Prisma authentication schema now defines
+  `User`, `Account`, `Session`, and `Verification`, including the core fields,
+  relations, uniqueness constraints, and lookup indexes required for the
+  installed Better Auth version. The repository-local Prisma `7.10.0` formatter
+  and schema validator both passed. No migration was created or applied, so the
+  database tables do not exist yet, and Prisma Client generation for this schema
+  remains pending. Authentication configuration, explicit account-linking
+  enforcement that disables implicit email-based linking, Google OAuth setup,
+  and email delivery also remain pending. The schema alone does not make
+  authentication functional; this work awaits review and commit.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -294,9 +300,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   container was observed running and healthy at `127.0.0.1:55432`. One GET
   returned HTTP 200 and `{"ok":true}` with `Cache-Control: no-store`, verifying
   the expected application role and database through Next.js. No route code,
-  credentials, roles, or permissions were changed for this success. Models,
-  migrations, gameplay, and the documented dependency audit findings remain
-  pending.
+  credentials, roles, or permissions were changed for this success. The
+  authentication models are now defined in the Prisma schema, but migrations,
+  database tables, client regeneration, authentication integration, gameplay,
+  and the documented dependency audit findings remain pending.
 
 ## Prisma dependency foundation — 2026-09-09
 
