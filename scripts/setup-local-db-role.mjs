@@ -26,11 +26,18 @@ const DATABASE_PORT = 55432
 const DATABASE_NAME = "projekt_space_dev"
 const SHADOW_DATABASE_NAME = "projekt_space_shadow"
 const ADMIN_ROLE = "projekt_space_admin"
+const MIGRATION_ROLE = "projekt_space_migrator"
 const APP_ROLE = "projekt_space_app"
 const EXAMPLE_PASSWORD = "replace-with-generated-password"
 const CONNECTION_TIMEOUT_MS = 5_000
 const QUERY_TIMEOUT_MS = 5_000
 const PROBE_TABLE = "public.projekt_space_role_permission_probe"
+const MIGRATION_PROBE_TABLE =
+  "public.projekt_space_migration_permission_probe"
+const MIGRATION_PROBE_SEQUENCE =
+  "public.projekt_space_migration_sequence_probe"
+const APP_TABLE_PRIVILEGES = new Set(["SELECT", "INSERT", "UPDATE", "DELETE"])
+const APP_SEQUENCE_PRIVILEGES = new Set(["USAGE", "SELECT"])
 
 export class SetupError extends Error {}
 
@@ -94,6 +101,7 @@ export function parseUniqueEnvValue(source, name, { required = false } = {}) {
 
 function parseCompatibleLocalDatabaseUrl(value, {
   databaseName,
+  roleName,
   variableName,
 }) {
   let url
@@ -125,7 +133,7 @@ function parseCompatibleLocalDatabaseUrl(value, {
     url.hostname === DATABASE_HOST &&
     url.port === String(DATABASE_PORT) &&
     database === databaseName &&
-    username === APP_ROLE &&
+    username === roleName &&
     password.length > 0
 
   if (!compatible) {
@@ -142,43 +150,57 @@ function parseCompatibleLocalDatabaseUrl(value, {
 export function parseCompatibleDatabaseUrl(value) {
   return parseCompatibleLocalDatabaseUrl(value, {
     databaseName: DATABASE_NAME,
+    roleName: APP_ROLE,
     variableName: "DATABASE_URL",
+  })
+}
+
+export function parseCompatibleMigrationDatabaseUrl(value) {
+  return parseCompatibleLocalDatabaseUrl(value, {
+    databaseName: DATABASE_NAME,
+    roleName: MIGRATION_ROLE,
+    variableName: "MIGRATION_DATABASE_URL",
   })
 }
 
 export function parseCompatibleShadowDatabaseUrl(value) {
   return parseCompatibleLocalDatabaseUrl(value, {
     databaseName: SHADOW_DATABASE_NAME,
+    roleName: APP_ROLE,
     variableName: "SHADOW_DATABASE_URL",
   })
 }
 
 export function validatePasswordForNativeInput(password) {
   if (typeof password !== "string" || password.length === 0) {
-    fail("The application password is empty or invalid.")
+    fail("The database role password is empty or invalid.")
   }
 
   if (/[\r\n\0]/u.test(password)) {
-    fail("The application password contains unsupported control characters.")
+    fail("The database role password contains unsupported control characters.")
   }
 
   return password
 }
 
-function createLocalDatabaseUrl(password, databaseName) {
+function createLocalDatabaseUrl(password, databaseName, roleName) {
   return (
-    `postgresql://${encodeURIComponent(APP_ROLE)}:` +
+    `postgresql://${encodeURIComponent(roleName)}:` +
     `${encodeURIComponent(password)}@${DATABASE_HOST}:${DATABASE_PORT}/` +
     encodeURIComponent(databaseName)
   )
 }
 
 export function createDatabaseUrl(password) {
-  return createLocalDatabaseUrl(password, DATABASE_NAME)
+  return createLocalDatabaseUrl(password, DATABASE_NAME, APP_ROLE)
+}
+
+export function createMigrationDatabaseUrl(password) {
+  return createLocalDatabaseUrl(password, DATABASE_NAME, MIGRATION_ROLE)
 }
 
 export function createShadowDatabaseUrl(password) {
-  return createLocalDatabaseUrl(password, SHADOW_DATABASE_NAME)
+  return createLocalDatabaseUrl(password, SHADOW_DATABASE_NAME, APP_ROLE)
 }
 
 function appendEnvironmentValue(source, name, value) {
@@ -200,6 +222,14 @@ export function appendShadowDatabaseUrl(source, shadowDatabaseUrl) {
     source,
     "SHADOW_DATABASE_URL",
     shadowDatabaseUrl,
+  )
+}
+
+export function appendMigrationDatabaseUrl(source, migrationDatabaseUrl) {
+  return appendEnvironmentValue(
+    source,
+    "MIGRATION_DATABASE_URL",
+    migrationDatabaseUrl,
   )
 }
 
@@ -305,7 +335,7 @@ export async function persistCredentialFile({
   }
 
   if (operationError) {
-    fail("The local application credential could not be persisted safely.")
+    fail("The local database credential could not be persisted safely.")
   }
 }
 
@@ -358,6 +388,71 @@ export async function reconcileRoleSetup({
   await verifyNewRole(password)
 
   return { created: true, credentialsWritten: databaseUrl === null }
+}
+
+export async function reconcileMigrationRoleSetup({
+  appSource,
+  applicationPassword,
+  existingRole,
+  authenticateExistingRole,
+  verifyExistingRole,
+  persistCredentials,
+  createNewRole,
+  verifyNewRole,
+  generatePassword = () => randomBytes(32).toString("base64url"),
+}) {
+  const migrationDatabaseUrl = parseUniqueEnvValue(
+    appSource ?? "",
+    "MIGRATION_DATABASE_URL",
+  )
+  let password = migrationDatabaseUrl === null
+    ? null
+    : parseCompatibleMigrationDatabaseUrl(migrationDatabaseUrl)
+
+  if (password === applicationPassword) {
+    fail("The migration and application roles must use different credentials.")
+  }
+
+  if (existingRole) {
+    if (password === null) {
+      fail("The migration role exists without compatible local credentials.")
+    }
+
+    await authenticateExistingRole(password)
+    await verifyExistingRole(existingRole)
+
+    return { created: false, credentialsWritten: false }
+  }
+
+  if (password === null) {
+    password = generatePassword()
+
+    if (typeof password !== "string" || password.length === 0) {
+      fail("A secure migration password could not be generated.")
+    }
+
+    validatePasswordForNativeInput(password)
+    if (password === applicationPassword) {
+      fail("The migration and application roles must use different credentials.")
+    }
+
+    const nextSource = appendMigrationDatabaseUrl(
+      appSource,
+      createMigrationDatabaseUrl(password),
+    )
+    await persistCredentials({
+      expectedSource: appSource,
+      nextSource,
+    })
+  }
+
+  await createNewRole(password)
+  await verifyNewRole(password)
+
+  return {
+    created: true,
+    credentialsWritten: migrationDatabaseUrl === null,
+  }
 }
 
 export async function reconcileShadowCredential({
@@ -537,13 +632,13 @@ async function verifyShadowDatabaseAccess(password) {
   }
 }
 
-async function getRole(adminClient) {
+async function getRole(adminClient, roleName = APP_ROLE) {
   const result = await adminClient.query(
     `SELECT oid, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole,
             rolreplication, rolbypassrls
        FROM pg_catalog.pg_roles
       WHERE rolname = $1`,
-    [APP_ROLE],
+    [roleName],
   )
 
   return result.rows[0] ?? null
@@ -626,9 +721,9 @@ async function inspectPublicPrivileges(adminClient) {
   return { databasePrivileges, schemaPrivileges }
 }
 
-async function assertCompatibleRole(adminClient, role) {
+export function assertRestrictedLoginRole(role, roleDescription) {
   const restricted =
-    role.rolcanlogin === true &&
+    role?.rolcanlogin === true &&
     role.rolsuper === false &&
     role.rolcreatedb === false &&
     role.rolcreaterole === false &&
@@ -636,8 +731,12 @@ async function assertCompatibleRole(adminClient, role) {
     role.rolbypassrls === false
 
   if (!restricted) {
-    fail("The existing application role has unexpected attributes.")
+    fail(`The existing ${roleDescription} role has unexpected attributes.`)
   }
+}
+
+async function assertCompatibleRole(adminClient, role) {
+  assertRestrictedLoginRole(role, "application")
 
   const memberships = await adminClient.query(
     `SELECT 1
@@ -681,29 +780,70 @@ async function assertCompatibleRole(adminClient, role) {
   }
 
   const defaultPrivileges = await adminClient.query(
-    `SELECT 1
-       FROM pg_catalog.pg_default_acl AS defaults,
+    `SELECT creator.rolname AS creator_role,
+            namespace_entry.nspname AS schema_name,
+            defaults.defaclobjtype AS object_type,
+            privileges.privilege_type,
+            privileges.is_grantable
+       FROM pg_catalog.pg_default_acl AS defaults
+       JOIN pg_catalog.pg_roles AS creator
+         ON creator.oid = defaults.defaclrole
+       LEFT JOIN pg_catalog.pg_namespace AS namespace_entry
+         ON namespace_entry.oid = defaults.defaclnamespace,
             LATERAL aclexplode(defaults.defaclacl) AS privileges
-      WHERE privileges.grantee = $1
-      LIMIT 1`,
+      WHERE privileges.grantee = $1`,
     [role.oid],
   )
 
-  if (defaultPrivileges.rowCount !== 0) {
-    fail("The application role has unexpected default privileges.")
+  for (const grant of defaultPrivileges.rows) {
+    const expectedPrivileges = grant.object_type === "r"
+      ? APP_TABLE_PRIVILEGES
+      : grant.object_type === "S"
+        ? APP_SEQUENCE_PRIVILEGES
+        : null
+    const expected =
+      grant.creator_role === MIGRATION_ROLE &&
+      grant.schema_name === "public" &&
+      expectedPrivileges?.has(grant.privilege_type) === true &&
+      grant.is_grantable === false
+
+    if (!expected) {
+      fail("The application role has unexpected default privileges.")
+    }
   }
 
-  const tablePrivileges = await adminClient.query(
-    `SELECT 1
-       FROM information_schema.table_privileges
-      WHERE grantee IN ($1, 'PUBLIC')
-        AND table_schema NOT IN ('pg_catalog', 'information_schema')
-      LIMIT 1`,
-    [APP_ROLE],
+  const objectPrivileges = await adminClient.query(
+    `SELECT namespace_entry.nspname AS schema_name,
+            class_entry.relkind AS object_type,
+            owner_role.rolname AS owner_name,
+            privileges.grantee,
+            privileges.privilege_type,
+            privileges.is_grantable
+       FROM pg_catalog.pg_class AS class_entry
+       JOIN pg_catalog.pg_namespace AS namespace_entry
+         ON namespace_entry.oid = class_entry.relnamespace
+       JOIN pg_catalog.pg_roles AS owner_role
+         ON owner_role.oid = class_entry.relowner,
+            LATERAL aclexplode(class_entry.relacl) AS privileges
+      WHERE namespace_entry.nspname NOT IN ('pg_catalog', 'information_schema')
+        AND privileges.grantee IN (0, $1)`,
+    [role.oid],
   )
 
-  if (tablePrivileges.rowCount !== 0) {
-    fail("Unexpected application-visible table privileges exist.")
+  for (const grant of objectPrivileges.rows) {
+    const expectedPrivileges = grant.object_type === "S"
+      ? APP_SEQUENCE_PRIVILEGES
+      : APP_TABLE_PRIVILEGES
+    const expected =
+      grant.grantee === role.oid &&
+      grant.schema_name === "public" &&
+      grant.owner_name === MIGRATION_ROLE &&
+      expectedPrivileges.has(grant.privilege_type) &&
+      grant.is_grantable === false
+
+    if (!expected) {
+      fail("Unexpected application-visible object privileges exist.")
+    }
   }
 }
 
@@ -755,6 +895,225 @@ async function verifyRolePermissions(adminClient, role) {
   }
 
   return permissions
+}
+
+function setsEqual(actual, expected) {
+  return actual.size === expected.size &&
+    [...actual].every((value) => expected.has(value))
+}
+
+export function assertExpectedMigrationDefaultPrivileges(rows) {
+  const grantsByObjectType = new Map([
+    ["r", new Set()],
+    ["S", new Set()],
+  ])
+  const seenObjectTypes = new Set()
+
+  for (const row of rows) {
+    if (
+      row.schema_name !== "public" ||
+      !grantsByObjectType.has(row.object_type)
+    ) {
+      fail("The migration role has unexpected default-privilege targets.")
+    }
+
+    seenObjectTypes.add(row.object_type)
+
+    if (row.grantee_role === MIGRATION_ROLE) {
+      continue
+    }
+
+    if (
+      row.grantee_role !== APP_ROLE ||
+      row.is_grantable !== false
+    ) {
+      fail("The migration role has unexpected default-privilege recipients.")
+    }
+
+    grantsByObjectType.get(row.object_type).add(row.privilege_type)
+  }
+
+  if (
+    seenObjectTypes.size !== 2 ||
+    !setsEqual(grantsByObjectType.get("r"), APP_TABLE_PRIVILEGES) ||
+    !setsEqual(grantsByObjectType.get("S"), APP_SEQUENCE_PRIVILEGES)
+  ) {
+    fail("The migration role default privileges are incomplete or unexpected.")
+  }
+}
+
+async function assertCompatibleMigrationRole(adminClient, role) {
+  assertRestrictedLoginRole(role, "migration")
+
+  const memberships = await adminClient.query(
+    `SELECT 1
+       FROM pg_catalog.pg_auth_members AS membership
+       JOIN pg_catalog.pg_roles AS member_role
+         ON member_role.oid = membership.member
+      WHERE member_role.rolname = $1
+      LIMIT 1`,
+    [MIGRATION_ROLE],
+  )
+
+  if (memberships.rowCount !== 0) {
+    fail("The migration role belongs to another role.")
+  }
+
+  const ownedDatabases = await adminClient.query(
+    `SELECT 1
+       FROM pg_catalog.pg_database
+      WHERE datdba = $1
+      LIMIT 1`,
+    [role.oid],
+  )
+  const ownedSchemas = await adminClient.query(
+    `SELECT 1
+       FROM pg_catalog.pg_namespace
+      WHERE nspowner = $1
+      LIMIT 1`,
+    [role.oid],
+  )
+  const unexpectedOwnedObjects = await adminClient.query(
+    `SELECT 1
+       FROM pg_catalog.pg_class AS class_entry
+       JOIN pg_catalog.pg_namespace AS namespace_entry
+         ON namespace_entry.oid = class_entry.relnamespace
+      WHERE class_entry.relowner = $1
+        AND namespace_entry.nspname <> 'public'
+        AND namespace_entry.nspname NOT LIKE 'pg_temp_%'
+      LIMIT 1`,
+    [role.oid],
+  )
+
+  if (
+    ownedDatabases.rowCount !== 0 ||
+    ownedSchemas.rowCount !== 0 ||
+    unexpectedOwnedObjects.rowCount !== 0
+  ) {
+    fail("The migration role owns an unexpected database, schema, or object.")
+  }
+
+  const databaseGrants = await adminClient.query(
+    `SELECT database_entry.datname AS database_name,
+            privileges.privilege_type,
+            privileges.is_grantable
+       FROM pg_catalog.pg_database AS database_entry,
+            LATERAL aclexplode(database_entry.datacl) AS privileges
+      WHERE privileges.grantee = $1`,
+    [role.oid],
+  )
+
+  if (
+    databaseGrants.rowCount !== 1 ||
+    databaseGrants.rows[0].database_name !== DATABASE_NAME ||
+    databaseGrants.rows[0].privilege_type !== "CONNECT" ||
+    databaseGrants.rows[0].is_grantable !== false
+  ) {
+    fail("The migration role has unexpected direct database privileges.")
+  }
+
+  const schemaGrants = await adminClient.query(
+    `SELECT namespace_entry.nspname AS schema_name,
+            privileges.privilege_type,
+            privileges.is_grantable
+       FROM pg_catalog.pg_namespace AS namespace_entry,
+            LATERAL aclexplode(namespace_entry.nspacl) AS privileges
+      WHERE privileges.grantee = $1`,
+    [role.oid],
+  )
+  const schemaPrivilegeNames = new Set(
+    schemaGrants.rows.map((grant) => grant.privilege_type),
+  )
+  const validSchemaGrants = schemaGrants.rows.every(
+    (grant) =>
+      grant.schema_name === "public" &&
+      grant.is_grantable === false,
+  )
+
+  if (
+    !validSchemaGrants ||
+    !setsEqual(schemaPrivilegeNames, new Set(["USAGE", "CREATE"]))
+  ) {
+    fail("The migration role has unexpected direct schema privileges.")
+  }
+
+  const defaultPrivileges = await adminClient.query(
+    `SELECT namespace_entry.nspname AS schema_name,
+            defaults.defaclobjtype AS object_type,
+            COALESCE(grantee_role.rolname, 'PUBLIC') AS grantee_role,
+            privileges.privilege_type,
+            privileges.is_grantable
+       FROM pg_catalog.pg_default_acl AS defaults
+       LEFT JOIN pg_catalog.pg_namespace AS namespace_entry
+         ON namespace_entry.oid = defaults.defaclnamespace
+       CROSS JOIN LATERAL aclexplode(defaults.defaclacl) AS privileges
+       LEFT JOIN pg_catalog.pg_roles AS grantee_role
+         ON grantee_role.oid = privileges.grantee
+      WHERE defaults.defaclrole = $1`,
+    [role.oid],
+  )
+
+  assertExpectedMigrationDefaultPrivileges(defaultPrivileges.rows)
+}
+
+async function verifyMigrationRolePermissions(adminClient, role) {
+  await assertCompatibleMigrationRole(adminClient, role)
+
+  const effective = await adminClient.query(
+    `SELECT
+       has_database_privilege($1, $2, 'CONNECT') AS database_connect,
+       has_database_privilege($1, $2, 'CREATE') AS database_create,
+       has_database_privilege($1, $2, 'TEMP') AS database_temporary,
+       has_database_privilege($1, $3, 'CREATE') AS shadow_database_create,
+       has_schema_privilege($1, 'public', 'USAGE') AS schema_usage,
+       has_schema_privilege($1, 'public', 'CREATE') AS schema_create`,
+    [MIGRATION_ROLE, DATABASE_NAME, SHADOW_DATABASE_NAME],
+  )
+  const permissions = effective.rows[0]
+
+  if (
+    !permissions?.database_connect ||
+    !permissions.schema_usage ||
+    !permissions.schema_create
+  ) {
+    fail("Required migration role access is missing.")
+  }
+
+  if (permissions.database_create || permissions.shadow_database_create) {
+    fail("The migration role has unexpected database CREATE access.")
+  }
+
+  return permissions
+}
+
+async function verifyMigrationRoleRestrictedInShadow(adminPassword) {
+  const shadowAdminClient = await connectClient(
+    ADMIN_ROLE,
+    adminPassword,
+    SHADOW_DATABASE_NAME,
+  )
+
+  try {
+    const result = await shadowAdminClient.query(
+      `SELECT
+         has_schema_privilege($1, 'public', 'CREATE') AS schema_create,
+         EXISTS(
+           SELECT 1
+             FROM pg_catalog.pg_namespace AS namespace_entry
+             JOIN pg_catalog.pg_roles AS owner_role
+               ON owner_role.oid = namespace_entry.nspowner
+            WHERE namespace_entry.nspname = 'public'
+              AND owner_role.rolname = $1
+         ) AS owns_schema`,
+      [MIGRATION_ROLE],
+    )
+
+    if (result.rows[0]?.schema_create || result.rows[0]?.owns_schema) {
+      fail("The migration role has unexpected shadow-schema access.")
+    }
+  } finally {
+    await closeClient(shadowAdminClient)
+  }
 }
 
 function nativeRoleSetupInput(password) {
@@ -821,13 +1180,97 @@ export function createRoleWithNativeClient(
   }
 }
 
-async function verifyIncorrectPasswordRejected() {
+function nativeMigrationRoleSetupInput(password) {
+  return [
+    `SELECT current_user = '${ADMIN_ROLE}' AND current_database() = '${DATABASE_NAME}' AS expected_identity \\gset`,
+    "\\if :expected_identity",
+    "BEGIN;",
+    `CREATE ROLE ${MIGRATION_ROLE} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;`,
+    `\\password ${MIGRATION_ROLE}`,
+    password,
+    password,
+    `GRANT CONNECT ON DATABASE ${DATABASE_NAME} TO ${MIGRATION_ROLE};`,
+    `GRANT USAGE, CREATE ON SCHEMA public TO ${MIGRATION_ROLE};`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE ${MIGRATION_ROLE} IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE};`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE ${MIGRATION_ROLE} IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${APP_ROLE};`,
+    "COMMIT;",
+    "\\else",
+    "\\quit 3",
+    "\\endif",
+    "",
+  ].join("\n")
+}
+
+export function createMigrationRoleWithNativeClient(
+  password,
+  { spawn = spawnSync, repositoryRoot = ROOT_DIRECTORY } = {},
+) {
+  validatePasswordForNativeInput(password)
+
+  const args = [
+    "compose",
+    "--env-file",
+    ".env.postgres.local",
+    "exec",
+    "-T",
+    "postgres",
+    "psql",
+    "-X",
+    "--set=ON_ERROR_STOP=1",
+    "--username",
+    ADMIN_ROLE,
+    "--dbname",
+    DATABASE_NAME,
+  ]
+  const result = spawn("docker", args, {
+    cwd: repositoryRoot,
+    input: nativeMigrationRoleSetupInput(password),
+    encoding: "utf8",
+    windowsHide: true,
+    timeout: 15_000,
+    maxBuffer: 1_048_576,
+  })
+  const stdout = typeof result.stdout === "string" ? result.stdout : ""
+  const stderr = typeof result.stderr === "string" ? result.stderr : ""
+
+  if (stdout.includes(password) || stderr.includes(password)) {
+    fail("The native PostgreSQL client exposed credential material in output.")
+  }
+
+  if (result.error?.code === "ETIMEDOUT") {
+    fail("Native PostgreSQL migration-role creation timed out; saved credentials were retained.")
+  }
+
+  if (result.status !== 0) {
+    fail("Native PostgreSQL migration-role creation failed; saved credentials were retained.")
+  }
+}
+
+async function verifyBasicMigrationAccess(password) {
+  const migrationClient = await connectClient(MIGRATION_ROLE, password)
+
+  try {
+    await verifyIdentity(migrationClient, MIGRATION_ROLE)
+    const result = await migrationClient.query("SELECT 1 AS probe")
+
+    if (result.rows[0]?.probe !== 1) {
+      fail("Migration-role SELECT verification failed.")
+    }
+  } finally {
+    await closeClient(migrationClient)
+  }
+}
+
+async function verifyIncorrectPasswordRejected(
+  roleName = APP_ROLE,
+  roleDescription = "application",
+) {
   const incorrectPassword = randomBytes(32).toString("base64url")
 
   try {
-    const client = await connectClient(APP_ROLE, incorrectPassword)
+    const client = await connectClient(roleName, incorrectPassword)
     await closeClient(client)
-    fail("An incorrect application password unexpectedly succeeded.")
+    fail(`An incorrect ${roleDescription} password unexpectedly succeeded.`)
   } catch (error) {
     if (error instanceof SetupError) {
       throw error
@@ -883,6 +1326,77 @@ async function verifyTableCreationRejected(password, adminClient) {
   }
 }
 
+async function verifyMigrationObjectCreation(password, adminClient) {
+  const migrationClient = await connectClient(MIGRATION_ROLE, password)
+  let transactionOpen = false
+
+  try {
+    await migrationClient.query("BEGIN")
+    transactionOpen = true
+    await migrationClient.query(
+      `CREATE TABLE ${MIGRATION_PROBE_TABLE} (probe integer NOT NULL)`,
+    )
+    await migrationClient.query(`CREATE SEQUENCE ${MIGRATION_PROBE_SEQUENCE}`)
+
+    const grants = await migrationClient.query(
+      `SELECT class_entry.relkind AS object_type,
+              owner_role.rolname AS owner_name,
+              privileges.privilege_type,
+              privileges.is_grantable
+         FROM pg_catalog.pg_class AS class_entry
+         JOIN pg_catalog.pg_roles AS owner_role
+           ON owner_role.oid = class_entry.relowner
+         CROSS JOIN LATERAL aclexplode(class_entry.relacl) AS privileges
+        WHERE class_entry.oid IN (to_regclass($1), to_regclass($2))
+          AND privileges.grantee = (
+            SELECT oid FROM pg_catalog.pg_roles WHERE rolname = $3
+          )`,
+      [MIGRATION_PROBE_TABLE, MIGRATION_PROBE_SEQUENCE, APP_ROLE],
+    )
+    const tablePrivileges = new Set(
+      grants.rows
+        .filter((grant) => grant.object_type !== "S")
+        .map((grant) => grant.privilege_type),
+    )
+    const sequencePrivileges = new Set(
+      grants.rows
+        .filter((grant) => grant.object_type === "S")
+        .map((grant) => grant.privilege_type),
+    )
+    const compatible =
+      grants.rows.length > 0 &&
+      grants.rows.every(
+        (grant) =>
+          grant.owner_name === MIGRATION_ROLE &&
+          grant.is_grantable === false,
+      ) &&
+      setsEqual(tablePrivileges, APP_TABLE_PRIVILEGES) &&
+      setsEqual(sequencePrivileges, APP_SEQUENCE_PRIVILEGES)
+
+    if (!compatible) {
+      fail("Migration object ownership or default grants were not verified.")
+    }
+
+    await migrationClient.query("ROLLBACK")
+    transactionOpen = false
+  } finally {
+    if (transactionOpen) {
+      await migrationClient.query("ROLLBACK").catch(() => {})
+    }
+    await closeClient(migrationClient)
+  }
+
+  const probe = await adminClient.query(
+    `SELECT to_regclass($1) IS NULL AS table_absent,
+            to_regclass($2) IS NULL AS sequence_absent`,
+    [MIGRATION_PROBE_TABLE, MIGRATION_PROBE_SEQUENCE],
+  )
+
+  if (!probe.rows[0]?.table_absent || !probe.rows[0]?.sequence_absent) {
+    fail("A migration permission probe object was not removed.")
+  }
+}
+
 function sanitizedFailure(error) {
   if (error instanceof SetupError) {
     return error.message
@@ -924,6 +1438,10 @@ export async function runLocalSetup() {
     appSource ?? "",
     "SHADOW_DATABASE_URL",
   )
+  const migrationDatabaseUrl = parseUniqueEnvValue(
+    appSource ?? "",
+    "MIGRATION_DATABASE_URL",
+  )
   let databasePassword
   if (databaseUrl !== null) {
     databasePassword = parseCompatibleDatabaseUrl(databaseUrl)
@@ -936,6 +1454,18 @@ export async function runLocalSetup() {
     const shadowPassword = parseCompatibleShadowDatabaseUrl(shadowDatabaseUrl)
     if (shadowPassword !== databasePassword) {
       fail("DATABASE_URL and SHADOW_DATABASE_URL use different credentials.")
+    }
+  }
+  if (migrationDatabaseUrl !== null) {
+    if (databasePassword === undefined) {
+      fail("MIGRATION_DATABASE_URL exists without DATABASE_URL.")
+    }
+
+    const migrationPassword = parseCompatibleMigrationDatabaseUrl(
+      migrationDatabaseUrl,
+    )
+    if (migrationPassword === databasePassword) {
+      fail("The migration and application roles must use different credentials.")
     }
   }
 
@@ -1023,11 +1553,74 @@ export async function runLocalSetup() {
       fail("The saved database URLs use different credentials.")
     }
 
+    const existingMigrationRole = await getRole(adminClient, MIGRATION_ROLE)
+    let migrationPermissions
+    const migrationResult = await reconcileMigrationRoleSetup({
+      appSource: finalAppSource,
+      applicationPassword: savedPassword,
+      existingRole: existingMigrationRole,
+      authenticateExistingRole: verifyBasicMigrationAccess,
+      verifyExistingRole: async (role) => {
+        migrationPermissions = await verifyMigrationRolePermissions(
+          adminClient,
+          role,
+        )
+      },
+      persistCredentials: async ({ expectedSource, nextSource }) => {
+        await persistCredentialFile({
+          filePath: APP_ENV_PATH,
+          expectedSource,
+          nextSource,
+        })
+      },
+      createNewRole: async (password) => {
+        createMigrationRoleWithNativeClient(password)
+      },
+      verifyNewRole: async (password) => {
+        const role = await getRole(adminClient, MIGRATION_ROLE)
+        if (!role) {
+          fail("The new migration role could not be verified.")
+        }
+
+        migrationPermissions = await verifyMigrationRolePermissions(
+          adminClient,
+          role,
+        )
+        await verifyBasicMigrationAccess(password)
+      },
+    })
+
+    const completedAppSource = (await readOptionalFile(APP_ENV_PATH)) ?? ""
+    const savedMigrationUrl = parseUniqueEnvValue(
+      completedAppSource,
+      "MIGRATION_DATABASE_URL",
+      { required: true },
+    )
+    const savedMigrationPassword = parseCompatibleMigrationDatabaseUrl(
+      savedMigrationUrl,
+    )
+    if (savedMigrationPassword === savedPassword) {
+      fail("The saved migration and application credentials are not distinct.")
+    }
+
+    const finalMigrationRole = await getRole(adminClient, MIGRATION_ROLE)
+    if (!finalMigrationRole) {
+      fail("The migration role could not be verified.")
+    }
+
     finalPermissions = await verifyRolePermissions(adminClient, finalRole)
+    migrationPermissions = await verifyMigrationRolePermissions(
+      adminClient,
+      finalMigrationRole,
+    )
     await verifyBasicApplicationAccess(savedPassword)
+    await verifyBasicMigrationAccess(savedMigrationPassword)
     await verifyShadowDatabaseAccess(savedPassword)
+    await verifyMigrationRoleRestrictedInShadow(adminPassword)
     await verifyIncorrectPasswordRejected()
+    await verifyIncorrectPasswordRejected(MIGRATION_ROLE, "migration-role")
     await verifyTableCreationRejected(savedPassword, adminClient)
+    await verifyMigrationObjectCreation(savedMigrationPassword, adminClient)
     await adminClient.query("SELECT 1")
 
     report(
@@ -1050,12 +1643,28 @@ export async function runLocalSetup() {
         ? "Shadow database credential: added to the existing ignored local file."
         : "Shadow database credential: reused without change.",
     )
+    report(
+      migrationResult.created
+        ? "Migration role: created with restricted attributes and grants."
+        : "Migration role: authenticated and reverified without mutation.",
+    )
+    report(
+      migrationResult.credentialsWritten
+        ? "Migration credential: persisted before role creation."
+        : "Migration credential: reused without rotation.",
+    )
     report("Application authentication: correct password accepted; incorrect password rejected.")
+    report("Migration authentication: correct password accepted; incorrect password rejected.")
     report("Application identity and SELECT 1: verified.")
+    report("Migration identity and SELECT 1: verified.")
     report("Shadow database ownership, authentication, and reset access: verified.")
     report("Application role CREATEDB, superuser, role creation, replication, and bypass-RLS: absent.")
     report("Database CONNECT and public-schema USAGE: verified as direct grants.")
     report("Effective database and public-schema CREATE: absent.")
+    report("Migration role administrative attributes and database CREATE: absent.")
+    report("Migration role direct CONNECT and public-schema USAGE/CREATE: verified.")
+    report("Migration role shadow-schema CREATE and ownership: absent.")
+    report("Runtime table and sequence default privileges: verified.")
     report(
       `Effective TEMPORARY on the target database: ${
         finalPermissions.database_temporary ? "present" : "absent"
@@ -1072,6 +1681,12 @@ export async function runLocalSetup() {
       }.`,
     )
     report("Regular table creation: rejected with insufficient_privilege; transaction rolled back.")
+    report(
+      `Migration role effective TEMPORARY on the target database: ${
+        migrationPermissions.database_temporary ? "present" : "absent"
+      }.`,
+    )
+    report("Migration create/default-grant probes: verified and rolled back.")
     report("Probe cleanup and final administrative connection: verified.")
   } finally {
     if (adminClient) {

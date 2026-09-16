@@ -61,21 +61,51 @@ export function assertDistinctDatabaseUrls(databaseUrl, shadowDatabaseUrl) {
   }
 }
 
+export function assertSameDatabaseUrls(databaseUrl, migrationDatabaseUrl) {
+  const database = logicalPostgresDatabase(databaseUrl, "DATABASE_URL")
+  const migrationDatabase = logicalPostgresDatabase(
+    migrationDatabaseUrl,
+    "MIGRATION_DATABASE_URL",
+  )
+
+  if (
+    database.host !== migrationDatabase.host ||
+    database.port !== migrationDatabase.port ||
+    database.database !== migrationDatabase.database
+  ) {
+    throw new Error(
+      "DATABASE_URL and MIGRATION_DATABASE_URL must identify the same database.",
+    )
+  }
+}
+
 const databaseUrl = env("DATABASE_URL")
+const configuredMigrationDatabaseUrl = process.env.MIGRATION_DATABASE_URL
+const migrationDatabaseUrl = configuredMigrationDatabaseUrl?.trim()
+  ? configuredMigrationDatabaseUrl
+  : undefined
 const configuredShadowDatabaseUrl = process.env.SHADOW_DATABASE_URL
 const shadowDatabaseUrl = configuredShadowDatabaseUrl?.trim()
   ? configuredShadowDatabaseUrl
   : undefined
 
+if (migrationDatabaseUrl !== undefined) {
+  assertSameDatabaseUrls(databaseUrl, migrationDatabaseUrl)
+}
+
 if (shadowDatabaseUrl !== undefined) {
   assertDistinctDatabaseUrls(databaseUrl, shadowDatabaseUrl)
+
+  if (migrationDatabaseUrl !== undefined) {
+    assertDistinctDatabaseUrls(migrationDatabaseUrl, shadowDatabaseUrl)
+  }
 }
 
 export default defineConfig({
   schema: SCHEMA_PATH,
   datasource: {
-    // env() throws a variable-name-only error when DATABASE_URL is unset.
-    url: databaseUrl,
+    // Prisma CLI uses the restricted migration identity when configured.
+    url: migrationDatabaseUrl ?? databaseUrl,
     ...(shadowDatabaseUrl === undefined ? {} : { shadowDatabaseUrl }),
   },
 })

@@ -9,22 +9,31 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import {
   SetupError,
   appendDatabaseUrl,
+  appendMigrationDatabaseUrl,
   appendShadowDatabaseUrl,
+  assertExpectedMigrationDefaultPrivileges,
+  assertRestrictedLoginRole,
+  createMigrationDatabaseUrl,
+  createMigrationRoleWithNativeClient,
   createRoleWithNativeClient,
   createDatabaseUrl,
   createShadowDatabaseUrl,
   createTemporaryCredentialPath,
   parseCompatibleDatabaseUrl,
+  parseCompatibleMigrationDatabaseUrl,
   parseCompatibleShadowDatabaseUrl,
   parseUniqueEnvValue,
   persistCredentialFile,
   reconcileRoleSetup,
+  reconcileMigrationRoleSetup,
   reconcileShadowCredential,
   reconcileShadowDatabase,
 } from "../scripts/setup-local-db-role.mjs"
 
 const TEST_PASSWORD = "synthetic-test-password"
+const TEST_MIGRATION_PASSWORD = "independent-synthetic-migration-password"
 const VALID_URL = createDatabaseUrl(TEST_PASSWORD)
+const VALID_MIGRATION_URL = createMigrationDatabaseUrl(TEST_MIGRATION_PASSWORD)
 const VALID_SHADOW_URL = createShadowDatabaseUrl(TEST_PASSWORD)
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url))
 const SCRIPT_PATH = path.resolve(
@@ -262,6 +271,192 @@ test("shadow database reconciliation is idempotent and rejects another owner", a
   assert.equal(created.created, true)
   assert.equal(createCount, 1)
   assert.equal(verifyCount, 1)
+})
+
+test("migration URL requires the migration role on the development database", () => {
+  assert.equal(
+    parseCompatibleMigrationDatabaseUrl(VALID_MIGRATION_URL),
+    TEST_MIGRATION_PASSWORD,
+  )
+
+  for (const invalidUrl of [
+    VALID_URL,
+    createMigrationDatabaseUrl(TEST_MIGRATION_PASSWORD).replace(
+      "projekt_space_dev",
+      "projekt_space_shadow",
+    ),
+  ]) {
+    assert.throws(
+      () => parseCompatibleMigrationDatabaseUrl(invalidUrl),
+      /MIGRATION_DATABASE_URL targets unexpected local database settings/,
+    )
+  }
+})
+
+test("first migration-role setup creates an independent persisted credential", async () => {
+  const appSource = `DATABASE_URL=${VALID_URL}\n`
+  let persisted
+  let createdPassword
+  let verifiedPassword
+
+  const result = await reconcileMigrationRoleSetup({
+    appSource,
+    applicationPassword: TEST_PASSWORD,
+    existingRole: null,
+    ...callbacks({
+      generatePassword: () => TEST_MIGRATION_PASSWORD,
+      persistCredentials: async (value) => {
+        persisted = value
+      },
+      createNewRole: async (password) => {
+        createdPassword = password
+      },
+      verifyNewRole: async (password) => {
+        verifiedPassword = password
+      },
+    }),
+  })
+
+  assert.deepEqual(result, { created: true, credentialsWritten: true })
+  assert.equal(persisted.expectedSource, appSource)
+  assert.equal(
+    persisted.nextSource,
+    appendMigrationDatabaseUrl(appSource, VALID_MIGRATION_URL),
+  )
+  assert.equal(createdPassword, TEST_MIGRATION_PASSWORD)
+  assert.equal(verifiedPassword, TEST_MIGRATION_PASSWORD)
+  assert.notEqual(createdPassword, TEST_PASSWORD)
+})
+
+test("existing migration-role setup reuses credentials without mutation", async () => {
+  const appSource =
+    `DATABASE_URL=${VALID_URL}\n` +
+    `MIGRATION_DATABASE_URL=${VALID_MIGRATION_URL}\n`
+  const calls = []
+
+  const result = await reconcileMigrationRoleSetup({
+    appSource,
+    applicationPassword: TEST_PASSWORD,
+    existingRole: { oid: 2 },
+    ...callbacks({
+      authenticateExistingRole: async (password) => {
+        assert.equal(password, TEST_MIGRATION_PASSWORD)
+        calls.push("authenticate")
+      },
+      verifyExistingRole: async () => calls.push("verify"),
+      persistCredentials: async () => calls.push("persist"),
+      createNewRole: async () => calls.push("create"),
+    }),
+  })
+
+  assert.deepEqual(result, { created: false, credentialsWritten: false })
+  assert.deepEqual(calls, ["authenticate", "verify"])
+})
+
+test("conflicting migration credentials fail before writes or role creation", async () => {
+  const calls = []
+
+  await assert.rejects(
+    reconcileMigrationRoleSetup({
+      appSource:
+        `DATABASE_URL=${VALID_URL}\n` +
+        `MIGRATION_DATABASE_URL=${createMigrationDatabaseUrl(TEST_PASSWORD)}\n`,
+      applicationPassword: TEST_PASSWORD,
+      existingRole: null,
+      ...callbacks({
+        persistCredentials: async () => calls.push("persist"),
+        createNewRole: async () => calls.push("create"),
+      }),
+    }),
+    /must use different credentials/,
+  )
+
+  await assert.rejects(
+    reconcileMigrationRoleSetup({
+      appSource: `DATABASE_URL=${VALID_URL}\n`,
+      applicationPassword: TEST_PASSWORD,
+      existingRole: { oid: 2 },
+      ...callbacks({
+        authenticateExistingRole: async () => calls.push("authenticate"),
+      }),
+    }),
+    /exists without compatible local credentials/,
+  )
+
+  assert.deepEqual(calls, [])
+})
+
+test("runtime and migration roles retain restricted login attributes", () => {
+  const restrictedRole = {
+    rolcanlogin: true,
+    rolsuper: false,
+    rolcreatedb: false,
+    rolcreaterole: false,
+    rolreplication: false,
+    rolbypassrls: false,
+  }
+
+  assert.doesNotThrow(() =>
+    assertRestrictedLoginRole(restrictedRole, "synthetic"),
+  )
+
+  for (const attribute of [
+    "rolsuper",
+    "rolcreatedb",
+    "rolcreaterole",
+    "rolreplication",
+    "rolbypassrls",
+  ]) {
+    assert.throws(
+      () => assertRestrictedLoginRole(
+        { ...restrictedRole, [attribute]: true },
+        "synthetic",
+      ),
+      /unexpected attributes/,
+    )
+  }
+})
+
+test("migration default privileges are exact and grant no grant option", () => {
+  const rows = [
+    ...["SELECT", "INSERT", "UPDATE", "DELETE"].map((privilegeType) => ({
+      schema_name: "public",
+      object_type: "r",
+      grantee_role: "projekt_space_app",
+      privilege_type: privilegeType,
+      is_grantable: false,
+    })),
+    ...["USAGE", "SELECT"].map((privilegeType) => ({
+      schema_name: "public",
+      object_type: "S",
+      grantee_role: "projekt_space_app",
+      privilege_type: privilegeType,
+      is_grantable: false,
+    })),
+  ]
+
+  assert.doesNotThrow(() => assertExpectedMigrationDefaultPrivileges(rows))
+  assert.throws(
+    () => assertExpectedMigrationDefaultPrivileges([
+      ...rows,
+      {
+        schema_name: "public",
+        object_type: "r",
+        grantee_role: "projekt_space_app",
+        privilege_type: "TRUNCATE",
+        is_grantable: false,
+      },
+    ]),
+    /incomplete or unexpected/,
+  )
+  assert.throws(
+    () => assertExpectedMigrationDefaultPrivileges(
+      rows.map((row, index) => index === 0
+        ? { ...row, is_grantable: true }
+        : row),
+    ),
+    /unexpected default-privilege recipients/,
+  )
 })
 
 test("invalid input causes no persistent or database writes", async () => {
@@ -550,6 +745,40 @@ test("native password setup keeps credentials out of arguments and SQL", () => {
 
       assert.equal(passwordLines.length, 2)
       assert.equal(sqlLines.some((line) => line.includes(TEST_PASSWORD)), false)
+      return { status: 0, stdout: "", stderr: "" }
+    },
+  })
+
+  assert.equal(inspected, true)
+})
+
+test("native migration-role setup grants only the reviewed privileges", () => {
+  let inspected = false
+
+  createMigrationRoleWithNativeClient(TEST_MIGRATION_PASSWORD, {
+    repositoryRoot: os.tmpdir(),
+    spawn(command, args, options) {
+      inspected = true
+      assert.equal(command, "docker")
+      assert.doesNotMatch(JSON.stringify(args), new RegExp(TEST_MIGRATION_PASSWORD))
+      assert.match(options.input, /CREATE ROLE projekt_space_migrator WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/)
+      assert.match(options.input, /GRANT CONNECT ON DATABASE projekt_space_dev TO projekt_space_migrator/)
+      assert.match(options.input, /GRANT USAGE, CREATE ON SCHEMA public TO projekt_space_migrator/)
+      assert.match(options.input, /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO projekt_space_app/)
+      assert.match(options.input, /GRANT USAGE, SELECT ON SEQUENCES TO projekt_space_app/)
+
+      const passwordLines = options.input
+        .split("\n")
+        .filter((line) => line === TEST_MIGRATION_PASSWORD)
+      const sqlLines = options.input
+        .split("\n")
+        .filter((line) => line.trimEnd().endsWith(";"))
+
+      assert.equal(passwordLines.length, 2)
+      assert.equal(
+        sqlLines.some((line) => line.includes(TEST_MIGRATION_PASSWORD)),
+        false,
+      )
       return { status: 0, stdout: "", stderr: "" }
     },
   })

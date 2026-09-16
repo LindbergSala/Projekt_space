@@ -86,7 +86,7 @@ directory. Changing the value in `.env.postgres.local` later does not change
 the password stored in an already initialized database. Use an authenticated
 database password-change operation when rotation is implemented.
 
-### Local application role
+### Local database roles
 
 Prerequisites:
 
@@ -94,19 +94,20 @@ Prerequisites:
 - Create `.env.postgres.local` as described above.
 - Start the healthy `projekt-space-local` PostgreSQL service.
 
-Create or verify the restricted local application role and its credentials:
+Create or verify the three local database identities and their credentials:
 
 ```bash
 node scripts/setup-local-db-role.mjs
 ```
 
 The script reads the administrative password from `.env.postgres.local` only
-for local provisioning. It writes the restricted application's `DATABASE_URL`
-and `SHADOW_DATABASE_URL` to the ignored `.env.local` file. The two URLs reuse
-the same application-role credentials but target the separate
-`projekt_space_dev` and `projekt_space_shadow` databases. Neither credential
-file may be committed or shared, and the application must not use the
-administrative role.
+for local provisioning. It writes `DATABASE_URL`, `MIGRATION_DATABASE_URL`, and
+`SHADOW_DATABASE_URL` to the ignored `.env.local` file. The application and
+shadow URLs reuse the application-role credential but target the separate
+`projekt_space_dev` and `projekt_space_shadow` databases. The migration URL
+uses an independently generated credential for `projekt_space_migrator` and
+targets `projekt_space_dev`. Neither credential file may be committed or
+shared, and the application must not use the administrative or migration role.
 
 Environment values are parsed with `dotenv`. The setup rejects duplicate or
 ambiguous database URL assignments, the documented example password, URL
@@ -123,19 +124,39 @@ roles, and cannot bypass row-level security. It owns only the dedicated
 has no database or schema creation rights in `projekt_space_dev`. PostgreSQL's
 effective `PUBLIC` privileges are inspected and reported separately.
 
+`projekt_space_migrator` is a separate login role used only by the Prisma CLI.
+It has direct `CONNECT` on `projekt_space_dev` and direct `USAGE` and `CREATE`
+on that database's `public` schema. It does not own either database or the
+schema, has no role memberships, and has no superuser, database-creation,
+role-creation, replication, or row-level-security-bypass attribute. It has no
+schema access in `projekt_space_shadow`.
+
+Objects created by the migration role are owned by that role. Its scoped
+default privileges grant `projekt_space_app` only `SELECT`, `INSERT`, `UPDATE`,
+and `DELETE` on future tables and `USAGE` and `SELECT` on future sequences in
+`projekt_space_dev.public`, without grant options. The runtime role remains
+unable to create regular tables. Because PostgreSQL applies these defaults to
+every table created by the migration role, `_prisma_migrations` also inherits
+the four runtime DML grants when Prisma first creates it. The repository's
+migration wrapper immediately revokes every privilege on that metadata table
+from `projekt_space_app` after each supported `migrate dev` invocation,
+including a failed Prisma exit after metadata creation. The hardener is an
+idempotent no-op while the table is absent.
+
 After the application role exists, the setup creates
 `projekt_space_shadow OWNER projekt_space_app` if it is absent. Rerunning the
-command verifies the existing owner, reuses compatible credentials, and does
-not rotate the password or recreate the database. A conflicting role, database
-owner, or URL causes a sanitized failure instead of being overwritten or reset.
+command verifies the existing database and both restricted roles, reuses
+compatible credentials, and does not rotate passwords or recreate the
+database. A conflicting role, grant, default privilege, database owner, or URL
+causes a sanitized failure instead of being overwritten or reset.
 
-For a new role, the generated credentials are written through an ignored
-`.env.local.<unique-id>.tmp` file before one native `psql` transaction creates
-the role, sets its password, and grants the restricted access. The setup checks
+For each new restricted role, the generated credential is written through an
+ignored `.env.local.<unique-id>.tmp` file before one native `psql` transaction
+creates the role, sets its password, and grants the restricted access. The setup checks
 the temporary path's ignore protection, exclusively creates the file before
 writing, removes task-owned partial files after failures, and reports cleanup
-failures. A credential-file failure prevents database creation. If database
-setup fails after the credentials are saved, they remain available for a safe
+failures. A credential-file failure prevents role creation. If database setup
+fails after the credential is saved, it remains available for a safe
 retry. Existing unrelated environment entries are preserved. Content
 comparisons before replacement detect observed conflicting changes, but they
 are not a file lock and cannot guarantee detection of every concurrent edit.
@@ -146,9 +167,8 @@ Run the credential-handling regression tests with:
 node --test tests/setup-local-db-role.test.mjs
 ```
 
-Permissions for changing the `projekt_space_dev` schema, migration application,
-Prisma client generation, and future table or default privileges are separate
-implementation tasks. Prisma CLI configuration and schema validation are
+Migration application and Prisma Client generation are separate tasks. Prisma
+CLI configuration, create-only migration generation, and schema validation are
 described below.
 
 ## Prisma configuration
@@ -161,14 +181,18 @@ the caller's working directory. It loads `.env.local` with the installed
 printed, and it never reads the administrative `.env.postgres.local` file. The
 restricted application `DATABASE_URL` is required: if it is missing, Prisma's
 own `env()` helper throws an error naming only the missing variable, never its
-value. `SHADOW_DATABASE_URL` is optional for non-migration commands. When it is
-present, Prisma uses it as `datasource.shadowDatabaseUrl`, and a fail-fast check
-rejects configurations where the main and shadow URLs identify the same host,
-port, and database without including either URL in the error.
+value. `MIGRATION_DATABASE_URL` is optional so validation, generation, and
+builds remain usable when migration credentials are not present. When it is
+available, the Prisma CLI uses it as `datasource.url`; it must identify the same
+logical development database as `DATABASE_URL`, while using the dedicated
+migration identity. `SHADOW_DATABASE_URL` is also optional for non-migration
+commands and is supplied as `datasource.shadowDatabaseUrl` when present.
+Fail-fast checks reject incompatible main, migration, or shadow targets without
+including any URL in the error.
 
 `prisma/schema.prisma` defines a `prisma-client-js` generator, a PostgreSQL
 datasource, and the minimum Better Auth models. It has no gameplay models,
-enums, migrations, or seed data yet:
+enums, or seed data:
 
 ```prisma
 generator client {
@@ -189,16 +213,46 @@ location (`node_modules/@prisma/client`, re-exporting
 `node_modules/` ignore rule, so no `output` path or `.gitignore` change was
 needed.
 
-Its main and optional shadow connection URLs are supplied entirely through
+Its optional migration URL and shadow URL are supplied entirely through
 `prisma.config.mjs` (`datasource.url` and
 `datasource.shadowDatabaseUrl`), which is the configuration API this pinned
-Prisma version supports.
+Prisma version supports. The shared server-side Prisma Client remains separate:
+it reads only `DATABASE_URL` and therefore continues to use
+`projekt_space_app` at runtime.
 
 The dedicated shadow database lets Prisma Migrate reset its comparison schema
-without granting `CREATEDB` to the application role. Migration development
-also needs permission to maintain Prisma's migration metadata in
-`projekt_space_dev`; that separate permission or migration identity is not yet
-configured.
+without granting `CREATEDB` to either restricted role. The migration identity
+can maintain Prisma's `_prisma_migrations` metadata and create migration-owned
+objects in `projekt_space_dev.public` without giving the runtime role schema
+creation rights.
+
+Run Prisma Migrate development commands through the repository wrapper so the
+runtime role cannot retain access to `_prisma_migrations`. For example, generate
+a migration without applying it with:
+
+```powershell
+npm run prisma:migrate:dev -- --create-only --name <migration_name>
+```
+
+The wrapper invokes the repository-local Prisma CLI with `migrate dev`, using
+`MIGRATION_DATABASE_URL` through `prisma.config.mjs`. It accepts only no
+arguments, `--create-only`, and `--name` in the documented forms; datasource,
+schema, config, and unrelated command overrides are rejected. After Prisma
+returns—or fails to start—the wrapper runs a transaction that verifies the
+expected database, migration identity, metadata-table type, and owner before
+executing the fixed metadata revocation and verifying that no direct or
+effective runtime privileges remain. A Prisma failure keeps its nonzero exit
+status; a hardening failure makes an otherwise successful run fail. Do not
+bypass this wrapper for local `migrate dev` commands.
+
+Run the focused migration-workflow tests with:
+
+```bash
+node --test tests/prisma-migration-workflow.test.mjs
+```
+
+The initial Better Auth migration is generated and remains unapplied in
+`prisma/migrations/20260915164738_add_better_auth_schema`.
 
 Validate the schema and generate the client with the repository-local Prisma
 CLI, without letting any tool install or download a CLI:
@@ -215,7 +269,7 @@ valid. Client generation and a `require('@prisma/client')` import check passed
 before the authentication models were added; regeneration for the current
 schema remains pending. The earlier import check confirmed `PrismaClient` and
 `Prisma` are exported, without instantiating a client. Neither command proves
-working runtime database integration. Migrations and runtime integration
+working authentication. Migration application and authentication integration
 remain separate, unimplemented tasks. The open Prisma dependency audit
 findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this
 configuration and remain unresolved.

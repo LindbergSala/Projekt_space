@@ -66,8 +66,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   `811487d chore: add safe diagnostics to development db check`. Earlier
   requests returned 503 while the database endpoint was unavailable. With the
   existing container healthy, the development route returned HTTP 200 and
-  verified the expected request-level database identity. Models, migrations,
-  and gameplay remain pending.
+  verified the expected request-level database identity. Migration application,
+  authentication integration, and gameplay remain pending.
 - `better-auth` `1.7.4` is pinned as a runtime dependency. Its Prisma adapter
   export and `disableImplicitLinking` option were confirmed in the installed
   package; offline imports, the dependency tree, lint, and the production build
@@ -78,9 +78,11 @@ The Codex repository inspection recorded the following verified checkpoint:
   `User`, `Account`, `Session`, and `Verification`, including the core fields,
   relations, uniqueness constraints, and lookup indexes required for the
   installed Better Auth version. The repository-local Prisma `7.10.0` formatter
-  and schema validator both passed. No migration was created or applied, so the
-  database tables do not exist yet, and Prisma Client generation for this schema
-  remains pending. Authentication configuration, explicit account-linking
+  and schema validator both passed. The initial migration now exists at
+  `prisma/migrations/20260915164738_add_better_auth_schema/migration.sql` and
+  remains unapplied, so the four authentication tables do not exist yet.
+  Prisma Client generation for this schema remains pending. Authentication
+  configuration, explicit account-linking
   enforcement that disables implicit email-based linking, Google OAuth setup,
   and email delivery also remain pending. The schema alone does not make
   authentication functional; this work awaits review and commit.
@@ -89,13 +91,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   `SHADOW_DATABASE_URL` without exposing credentials. The restricted
   application role owns only that shadow database and still has no superuser,
   `CREATEDB`, role-creation, replication, or row-level-security-bypass
-  attribute. Prisma `migrate dev --create-only` successfully used and reset the
-  configured shadow database, but then exited with code 1 when it attempted to
-  create `_prisma_migrations` in the development database's `public` schema,
-  where the role intentionally lacks `CREATE`. No migration artifact,
-  development table, or migration metadata table was created. A separately
-  authorized development-migration permission or identity is therefore still
-  required before the initial Better Auth migration can be generated.
+  attribute. An earlier Prisma `migrate dev --create-only` attempt successfully
+  used the configured shadow database but was blocked from creating migration
+  metadata with the runtime role. The dedicated restricted migration identity
+  documented below resolved that separation without broadening runtime access.
 - Other foundation documents still need reconciliation and integration.
 
 ## Application foundation — 2026-09-09
@@ -151,7 +150,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   `projekt_space_shadow` database described below.
 - The role has direct `CONNECT` on `projekt_space_dev` and `USAGE` on its
   `public` schema. Effective `CREATE` is absent on both the database and schema;
-  no table or default privileges were added.
+  scoped default privileges now allow it to use future tables and sequences
+  created by `projekt_space_migrator`, without grant options.
 - PostgreSQL's effective `PUBLIC` grants were inspected: the target database
   grants `CONNECT` and `TEMPORARY`, and the `public` schema grants `USAGE`.
   Consequently, the application role has effective temporary-table access.
@@ -164,10 +164,9 @@ The Codex repository inspection recorded the following verified checkpoint:
   `.env.local`. A second setup run reused compatible credentials without
   rotating the password and reverified the role, permissions, application
   authentication, cleanup, and administrative connection.
-- The PostgreSQL service remains running. Prisma configuration and client
-  generation, migration credentials, future table grants, and runtime database
-  access remain separate pending work. The documented Prisma dependency audit
-  findings also remain open.
+- The PostgreSQL service remains running. Migration application, Prisma Client
+  regeneration, and authentication integration remain separate pending work.
+  The documented Prisma dependency audit findings also remain open.
 
 #### Credential-handling verification — 2026-09-11
 
@@ -254,12 +253,90 @@ The Codex repository inspection recorded the following verified checkpoint:
   reporting that the current database is not managed by Prisma Migrate and that
   no migration exists in `prisma/migrations`. Consequently,
   `add_better_auth_schema` cannot yet be pending: generation must succeed first.
-- Generation of the initial migration remains blocked pending separately
-  authorized development-migration permissions or credentials. Prisma Client
+- This historical generation blocker was resolved by the subsequently
+  authorized restricted migration role documented below. Prisma Client
   regeneration, migration application, Better Auth configuration, explicit
   account-linking enforcement, Google OAuth, email delivery, and functional
-  authentication testing also remain pending. The existing Prisma dependency
+  authentication testing remain pending. The existing Prisma dependency
   security findings remain open and unchanged.
+
+#### Restricted Prisma migration role — 2026-09-15
+
+- The existing provisioning workflow now creates or verifies the independent
+  `projekt_space_migrator` login and stores its separately generated credential
+  only as `MIGRATION_DATABASE_URL` in ignored, untracked `.env.local`. Repeat
+  setup requires successful authentication and an exact compatible role,
+  target, grant, and default-privilege configuration; it does not silently
+  rotate credentials or repair conflicting roles.
+- The migration role is `NOSUPERUSER`, `NOCREATEDB`, `NOCREATEROLE`,
+  `NOREPLICATION`, and `NOBYPASSRLS`, has no role memberships, and owns neither
+  database nor the `public` schema. Its only direct database grant is `CONNECT`
+  on `projekt_space_dev`; its only direct schema grants are `USAGE` and `CREATE`
+  on `projekt_space_dev.public`, without grant options. It has no `CREATE` or
+  `USAGE` on the shadow database's `public` schema. The runtime role still has
+  no `CREATE` in the development database or schema.
+- Default privileges for objects created by `projekt_space_migrator` in
+  `projekt_space_dev.public` grant `projekt_space_app` exactly `SELECT`,
+  `INSERT`, `UPDATE`, and `DELETE` on tables and `USAGE` and `SELECT` on
+  sequences, without grant options. Transactional table and sequence probes
+  verified ownership and effective grants, were rolled back, and left no probe
+  objects.
+- `prisma.config.mjs` uses `MIGRATION_DATABASE_URL` as the optional Prisma CLI
+  datasource when present, requires it to identify the same logical database as
+  `DATABASE_URL`, and requires both to remain separate from
+  `SHADOW_DATABASE_URL`. Application runtime code remains unchanged and reads
+  only `DATABASE_URL`.
+- Repository-local Prisma `7.10.0` generated
+  `20260915164738_add_better_auth_schema` with `migrate dev --create-only`.
+  Review confirmed only the `user`, `session`, `account`, and `verification`
+  tables; all committed columns and PostgreSQL types; four primary keys; the
+  three required unique indexes; three lookup indexes; and the two User foreign
+  keys with `ON DELETE CASCADE`. String IDs have no database defaults. No
+  extension, grant, role, destructive, unrelated, or gameplay SQL is present.
+- The generated migration remains pending. Prisma created the allowed, empty
+  `_prisma_migrations` metadata table, but none of the four Better Auth tables.
+  Migration status exited with code 1 solely because the one migration is
+  unapplied. The metadata table initially inherited runtime `SELECT`, `INSERT`,
+  `UPDATE`, and `DELETE` from the migration role's table defaults; the
+  restricted migration workflow documented below now revokes all runtime
+  privileges from this table without changing the application-object defaults.
+  Authentication is not functional.
+- All 50 focused tests, JavaScript syntax checks, Prisma schema validation, and
+  lint pass. Migration application, Prisma Client
+  regeneration, Better Auth configuration, explicit account-linking
+  enforcement, Google OAuth, email delivery, Vercel/Neon setup, and functional
+  authentication testing remain pending. Existing Prisma dependency security
+  findings remain open and unchanged.
+
+#### Restricted local Prisma migration workflow — 2026-09-16
+
+- `npm run prisma:migrate:dev -- [options]` is the supported local `migrate dev`
+  entry point. Its cross-platform Node wrapper invokes only the repository-local
+  Prisma CLI and accepts no arguments or the limited `--create-only` and
+  `--name` forms. It rejects datasource, schema, config, destructive-command,
+  and arbitrary option overrides before starting Prisma.
+- After every accepted Prisma invocation, including a nonzero exit or process
+  startup failure, the wrapper runs an idempotent metadata hardener through
+  `MIGRATION_DATABASE_URL`. The hardener verifies
+  `projekt_space_migrator` on `projekt_space_dev`, treats an absent metadata
+  table as a successful no-op, and requires the existing table to be an
+  ordinary table owned by the migration role before issuing the fixed
+  `REVOKE ALL PRIVILEGES` from `projekt_space_app`. It then verifies that no
+  direct or effective runtime table privilege remains. Errors are sanitized.
+- The hardener ran once against the current development database. The empty
+  `_prisma_migrations` table remains structurally intact and owned by
+  `projekt_space_migrator`; `projekt_space_app` now has zero direct and
+  effective table privileges and still lacks schema `CREATE`. The existing
+  table defaults (`SELECT`, `INSERT`, `UPDATE`, and `DELETE`) and sequence
+  defaults (`USAGE` and `SELECT`) for future application objects remain
+  unchanged and have no grant option.
+- The Better Auth migration and Prisma schema hashes remained unchanged. The
+  migration is still pending, its four application tables remain absent, and
+  the metadata table remains empty. No migration was regenerated or applied.
+  Prisma Client generation, migration application, Better Auth configuration,
+  explicit account-linking enforcement, Google OAuth, email delivery,
+  Vercel/Neon setup, and functional authentication testing remain pending.
+  Existing Prisma dependency security findings remain open and unchanged.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 
