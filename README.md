@@ -167,8 +167,8 @@ Run the credential-handling regression tests with:
 node --test tests/setup-local-db-role.test.mjs
 ```
 
-Migration application and Prisma Client generation are separate tasks. Prisma
-CLI configuration, create-only migration generation, and schema validation are
+Prisma Client generation and authentication integration remain separate tasks.
+Prisma CLI configuration, migration handling, and schema validation are
 described below.
 
 ## Prisma configuration
@@ -251,8 +251,11 @@ Run the focused migration-workflow tests with:
 node --test tests/prisma-migration-workflow.test.mjs
 ```
 
-The initial Better Auth migration is generated and remains unapplied in
-`prisma/migrations/20260915164738_add_better_auth_schema`.
+The initial Better Auth migration in
+`prisma/migrations/20260915164738_add_better_auth_schema` has been applied to
+the local development database through this wrapper. Its four application
+tables are present and empty, while runtime access to `_prisma_migrations`
+remains revoked.
 
 Validate the schema and generate the client with the repository-local Prisma
 CLI, without letting any tool install or download a CLI:
@@ -269,8 +272,8 @@ valid. Client generation and a `require('@prisma/client')` import check passed
 before the authentication models were added; regeneration for the current
 schema remains pending. The earlier import check confirmed `PrismaClient` and
 `Prisma` are exported, without instantiating a client. Neither command proves
-working authentication. Migration application and authentication integration
-remain separate, unimplemented tasks. The open Prisma dependency audit
+working authentication. Authentication integration remains a separate,
+unimplemented task. The open Prisma dependency audit
 findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this
 configuration and remain unresolved.
 
@@ -342,6 +345,6 @@ TCP connections. With the existing PostgreSQL container running and healthy,
 one local GET returned HTTP 200, `{"ok":true}`, and `Cache-Control: no-store`.
 The route thereby verified the expected application user and database through
 a Next.js request; no code correction or credential change produced that
-result. The route is not an application feature. Models, migrations, gameplay,
-and the Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md)
-remain pending.
+result. The route is not an application feature. Authentication integration,
+gameplay, and the Prisma dependency audit findings in
+[PROJECT_STATUS.md](PROJECT_STATUS.md) remain pending.

@@ -66,8 +66,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   `811487d chore: add safe diagnostics to development db check`. Earlier
   requests returned 503 while the database endpoint was unavailable. With the
   existing container healthy, the development route returned HTTP 200 and
-  verified the expected request-level database identity. Migration application,
-  authentication integration, and gameplay remain pending.
+  verified the expected request-level database identity. Authentication
+  integration and gameplay remain pending.
 - `better-auth` `1.7.4` is pinned as a runtime dependency. Its Prisma adapter
   export and `disableImplicitLinking` option were confirmed in the installed
   package; offline imports, the dependency tree, lint, and the production build
@@ -80,9 +80,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   installed Better Auth version. The repository-local Prisma `7.10.0` formatter
   and schema validator both passed. The initial migration now exists at
   `prisma/migrations/20260915164738_add_better_auth_schema/migration.sql` and
-  remains unapplied, so the four authentication tables do not exist yet.
-  Prisma Client generation for this schema remains pending. Authentication
-  configuration, explicit account-linking
+  has been applied to the local development database. The four authentication
+  tables exist, match the Prisma schema, and are empty. Prisma Client generation
+  for this schema remains pending. Authentication configuration, explicit
+  account-linking
   enforcement that disables implicit email-based linking, Google OAuth setup,
   and email delivery also remain pending. The schema alone does not make
   authentication functional; this work awaits review and commit.
@@ -293,17 +294,15 @@ The Codex repository inspection recorded the following verified checkpoint:
   three required unique indexes; three lookup indexes; and the two User foreign
   keys with `ON DELETE CASCADE`. String IDs have no database defaults. No
   extension, grant, role, destructive, unrelated, or gameplay SQL is present.
-- The generated migration remains pending. Prisma created the allowed, empty
-  `_prisma_migrations` metadata table, but none of the four Better Auth tables.
-  Migration status exited with code 1 solely because the one migration is
-  unapplied. The metadata table initially inherited runtime `SELECT`, `INSERT`,
-  `UPDATE`, and `DELETE` from the migration role's table defaults; the
-  restricted migration workflow documented below now revokes all runtime
-  privileges from this table without changing the application-object defaults.
-  Authentication is not functional.
+- The generated migration was subsequently applied through the restricted
+  workflow documented below. Its four Better Auth tables now exist locally and
+  remain empty. The metadata table initially inherited runtime `SELECT`,
+  `INSERT`, `UPDATE`, and `DELETE` from the migration role's table defaults;
+  the wrapper revoked all runtime privileges from this table without changing
+  the application-object defaults. Authentication is not functional.
 - All 50 focused tests, JavaScript syntax checks, Prisma schema validation, and
-  lint pass. Migration application, Prisma Client
-  regeneration, Better Auth configuration, explicit account-linking
+  lint pass. Prisma Client regeneration, Better Auth configuration, explicit
+  account-linking
   enforcement, Google OAuth, email delivery, Vercel/Neon setup, and functional
   authentication testing remain pending. Existing Prisma dependency security
   findings remain open and unchanged.
@@ -331,12 +330,40 @@ The Codex repository inspection recorded the following verified checkpoint:
   defaults (`USAGE` and `SELECT`) for future application objects remain
   unchanged and have no grant option.
 - The Better Auth migration and Prisma schema hashes remained unchanged. The
-  migration is still pending, its four application tables remain absent, and
-  the metadata table remains empty. No migration was regenerated or applied.
-  Prisma Client generation, migration application, Better Auth configuration,
+  migration has now been applied locally through the wrapper; the four
+  application tables exist and remain empty. Prisma Client generation, Better
+  Auth configuration,
   explicit account-linking enforcement, Google OAuth, email delivery,
   Vercel/Neon setup, and functional authentication testing remain pending.
   Existing Prisma dependency security findings remain open and unchanged.
+
+#### Initial Better Auth migration application — 2026-09-16
+
+- `npm run prisma:migrate:dev` applied exactly
+  `20260915164738_add_better_auth_schema` with no additional migration. Prisma
+  reported the database in sync, and repository-local `prisma migrate status`
+  subsequently reported one migration and an up-to-date schema.
+- The recorded migration row is finished, has one applied step, and is not
+  rolled back. The `user`, `session`, `account`, and `verification` tables match
+  the committed columns and PostgreSQL types. They have four primary keys, the
+  three required unique indexes, three lookup indexes, and the two User foreign
+  keys with `ON DELETE CASCADE`.
+- All four application tables are empty and owned by
+  `projekt_space_migrator`. `projekt_space_app` has exactly `SELECT`, `INSERT`,
+  `UPDATE`, and `DELETE` on each, without `TRUNCATE`, `REFERENCES`, `TRIGGER`,
+  ownership, or schema `CREATE`. It has zero direct or effective privileges on
+  `_prisma_migrations`, which remains owned by the migration role.
+- Read-only catalog comparisons found no additional application table, schema,
+  extension, role, role membership, or leftover probe object. The three role
+  attribute sets remain unchanged. Repository-local `prisma migrate diff
+  --from-config-datasource --to-schema prisma/schema.prisma --exit-code`
+  reported no difference.
+- The Prisma schema and migration SQL hashes remained unchanged, and no tracked
+  file changed during migration execution. Prisma emitted no Client-generation
+  output. Prisma Client generation, Better Auth configuration, explicit
+  account-linking enforcement, Google OAuth, email delivery, Vercel/Neon setup,
+  and functional authentication testing remain pending. Authentication is not
+  functional, and the existing dependency security findings remain open.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 
