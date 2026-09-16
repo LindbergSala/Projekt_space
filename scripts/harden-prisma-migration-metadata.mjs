@@ -28,6 +28,16 @@ function fail(message) {
 }
 
 async function loadMigrationDatabaseUrl() {
+  if (Object.hasOwn(process.env, "MIGRATION_DATABASE_URL")) {
+    const configuredValue = process.env.MIGRATION_DATABASE_URL
+
+    if (typeof configuredValue !== "string" || configuredValue.length === 0) {
+      fail("MIGRATION_DATABASE_URL is missing.")
+    }
+
+    return configuredValue
+  }
+
   let source
 
   try {
@@ -37,8 +47,7 @@ async function loadMigrationDatabaseUrl() {
   }
 
   const parsed = dotenv.parse(source)
-  const configuredValue = process.env.MIGRATION_DATABASE_URL ??
-    parsed.MIGRATION_DATABASE_URL
+  const configuredValue = parsed.MIGRATION_DATABASE_URL
 
   if (typeof configuredValue !== "string" || configuredValue.length === 0) {
     fail("MIGRATION_DATABASE_URL is missing.")

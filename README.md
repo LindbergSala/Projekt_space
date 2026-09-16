@@ -9,6 +9,7 @@ database connection yet.
 
 - Node.js 24.x
 - npm
+- Docker Desktop with Docker Compose for local Prisma migrations
 
 ## Install
 
@@ -234,16 +235,43 @@ a migration without applying it with:
 npm run prisma:migrate:dev -- --create-only --name <migration_name>
 ```
 
-The wrapper invokes the repository-local Prisma CLI with `migrate dev`, using
-`MIGRATION_DATABASE_URL` through `prisma.config.mjs`. It accepts only no
-arguments, `--create-only`, and `--name` in the documented forms; datasource,
-schema, config, and unrelated command overrides are rejected. After Prisma
-returns—or fails to start—the wrapper runs a transaction that verifies the
-expected database, migration identity, metadata-table type, and owner before
-executing the fixed metadata revocation and verifying that no direct or
+On first use, and whenever `package.json` or `package-lock.json` changes, build
+the dedicated tooling image:
+
+```bash
+docker compose --file compose.prisma.yaml build prisma-tooling
+```
+
+The public npm command starts only the fixed `prisma-tooling` service from
+`compose.prisma.yaml`; the Windows host never starts a Prisma schema engine.
+The image uses the digest-pinned official Node.js `24.20.0` Bookworm slim image,
+installs exactly `package-lock.json` with `npm ci`, and contains no global Prisma
+installation. Prisma `7.10.0` and its Linux schema engine run as the unprivileged
+`node` user with a read-only container filesystem, no published ports, all Linux
+capabilities dropped, and only the schema, config, three reviewed scripts, and
+migration directory mounted. Only `prisma/migrations` is writable. Each run is
+ephemeral and joins the existing `projekt-space-local_default` network without
+starting or reconfiguring PostgreSQL.
+
+The host launcher reads the three existing restricted URLs from ignored
+`.env.local`, rejects duplicate, malformed, or unexpected targets, and passes
+only `DATABASE_URL`, `MIGRATION_DATABASE_URL`, and `SHADOW_DATABASE_URL` to the
+tooling service. It translates only the documented `127.0.0.1:55432` endpoint
+to `postgres:5432`; usernames, passwords, and database names are unchanged.
+Credential files are excluded from the image build context and are never
+mounted. The separate tooling Compose file therefore does not need or duplicate
+the PostgreSQL administrative credential.
+
+The host and container wrappers both accept only no arguments, `--create-only`,
+and `--name` in the documented forms; datasource, schema, config, destructive
+commands, and unrelated overrides are rejected. The inner wrapper is also
+guarded against execution outside its Linux tooling container. After Prisma
+returns—or fails to start—the inner wrapper runs a transaction that verifies
+the expected database, migration identity, metadata-table type, and owner
+before executing the fixed metadata revocation and verifying that no direct or
 effective runtime privileges remain. A Prisma failure keeps its nonzero exit
-status; a hardening failure makes an otherwise successful run fail. Do not
-bypass this wrapper for local `migrate dev` commands.
+status; a hardening failure makes an otherwise successful run fail. Keep Smart
+App Control enabled and do not bypass this workflow for local `migrate dev`.
 
 Run the focused migration-workflow tests with:
 
@@ -257,27 +285,28 @@ the local development database through this wrapper. Its four application
 tables are present and empty, while runtime access to `_prisma_migrations`
 remains revoked.
 
-Validate the schema and generate the client with the repository-local Prisma
-CLI, without letting any tool install or download a CLI:
+Generate the client separately with the repository-local Prisma CLI, without
+letting any tool install or download a CLI:
 
 ```bash
-node_modules/.bin/prisma validate
 node_modules/.bin/prisma generate
 ```
 
-On Windows PowerShell, use `.\node_modules\.bin\prisma.cmd` instead. Validation
-passes without opening a database connection and confirms that
-`prisma.config.mjs` loads, its configured URLs resolve, and the schema is
-valid. The client was regenerated from the current authentication schema with
-the pinned Prisma `7.10.0` CLI. Offline checks confirmed the matching generated
-version, the four authentication models and their fields and relations, and the
-`PrismaClient` and `Prisma` exports. A bounded read-only check through the
-shared server-side client confirmed all four model delegates and empty tables
-while connected as `projekt_space_app` to `projekt_space_dev`. This verifies
-client generation and restricted database access only, not working
-authentication. Authentication integration remains unimplemented. The open
-Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are
-unaffected by this configuration and remain unresolved.
+On Windows PowerShell, use `.\node_modules\.bin\prisma.cmd generate` instead.
+Do not invoke schema-engine commands directly on a Smart App Control-enforced
+Windows host; schema validation, migration status, drift inspection, and
+`migrate dev` use the Linux tooling container. The schema passed containerized
+validation without opening a database connection. The client was regenerated
+separately from the current authentication schema with the pinned Prisma
+`7.10.0` CLI. Offline checks confirmed the matching generated version, the four
+authentication models and their fields and relations, and the `PrismaClient`
+and `Prisma` exports. A bounded read-only check through the shared server-side
+client confirmed all four model delegates and empty tables while connected as
+`projekt_space_app` to `projekt_space_dev`. This verifies client generation and
+restricted database access only, not working authentication. Authentication
+integration remains unimplemented. The open Prisma dependency audit findings
+in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this configuration
+and remain unresolved.
 
 ### Standalone Prisma connectivity check
 

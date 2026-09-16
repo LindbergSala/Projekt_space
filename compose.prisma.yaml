@@ -1,0 +1,56 @@
+name: projekt-space-prisma-tooling
+
+services:
+  prisma-tooling:
+    image: projekt-space-prisma-tooling:node24-prisma7.10.0
+    build:
+      context: .
+      dockerfile: docker/prisma-tooling.Dockerfile
+    user: node
+    working_dir: /workspace
+    entrypoint: ["node", "scripts/prisma-migrate-dev.mjs"]
+    environment:
+      DATABASE_URL:
+      MIGRATION_DATABASE_URL:
+      SHADOW_DATABASE_URL:
+      PRISMA_TOOLING_CONTAINER: "1"
+      HOME: /tmp/prisma-home
+      XDG_CACHE_HOME: /tmp/prisma-cache
+    volumes:
+      - type: bind
+        source: ./prisma.config.mjs
+        target: /workspace/prisma.config.mjs
+        read_only: true
+      - type: bind
+        source: ./prisma/schema.prisma
+        target: /workspace/prisma/schema.prisma
+        read_only: true
+      - type: bind
+        source: ./prisma/migrations
+        target: /workspace/prisma/migrations
+      - type: bind
+        source: ./scripts/prisma-migrate-dev.mjs
+        target: /workspace/scripts/prisma-migrate-dev.mjs
+        read_only: true
+      - type: bind
+        source: ./scripts/harden-prisma-migration-metadata.mjs
+        target: /workspace/scripts/harden-prisma-migration-metadata.mjs
+        read_only: true
+      - type: bind
+        source: ./scripts/setup-local-db-role.mjs
+        target: /workspace/scripts/setup-local-db-role.mjs
+        read_only: true
+    networks:
+      - postgres
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  postgres:
+    external: true
+    name: projekt-space-local_default

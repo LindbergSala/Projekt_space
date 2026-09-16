@@ -75,6 +75,13 @@ export function validateMigrateDevArguments(args) {
 }
 
 function defaultSpawnPrisma(args) {
+  if (
+    process.platform !== "linux" ||
+    process.env.PRISMA_TOOLING_CONTAINER !== "1"
+  ) {
+    fail("Prisma migrate dev must run inside the Linux tooling container.")
+  }
+
   return spawnSync(
     process.execPath,
     [PRISMA_CLI_PATH, "migrate", "dev", ...args],

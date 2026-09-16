@@ -396,6 +396,50 @@ The Codex repository inspection recorded the following verified checkpoint:
   testing remain pending. Authentication is not functional, and the existing
   dependency security findings remain open and unchanged.
 
+#### Smart App Control-compatible Prisma migration tooling — 2026-09-16
+
+- `npm run prisma:migrate:dev -- [options]` now starts only the fixed,
+  ephemeral `prisma-tooling` service from `compose.prisma.yaml`. The host
+  launcher and the existing inner wrapper independently allow only no options,
+  `--create-only`, and the documented `--name` forms. The inner wrapper refuses
+  to start Prisma unless it is running on Linux with the tooling marker, so the
+  supported Windows workflow cannot execute the blocked Windows schema engine.
+- The tooling image uses the official digest-pinned
+  `node:24.20.0-bookworm-slim` base, installs the unchanged lockfile with
+  `npm ci`, and has no global Prisma installation. It runs as UID 1000 (`node`)
+  with a read-only root filesystem, no published ports, no Linux capabilities,
+  and `no-new-privileges`. Only the Prisma config, schema, three reviewed
+  workflow scripts, and migration directory are mounted; only the migration
+  directory is writable. Credential files are excluded from the build context
+  and are not mounted.
+- The host launcher reads the three existing restricted database URLs without
+  printing them, rejects duplicate or unexpected values, preserves credentials
+  and database names, and translates only `127.0.0.1:55432` to the existing
+  Compose network endpoint `postgres:5432`. Only `DATABASE_URL`,
+  `MIGRATION_DATABASE_URL`, and `SHADOW_DATABASE_URL` are exposed to the
+  tooling service. The separate Compose definition joins the existing external
+  PostgreSQL network and neither needs nor duplicates the administrative
+  credential.
+- The final image contains Node.js `24.20.0`, local Prisma `7.10.0`, and
+  `schema-engine-debian-openssl-3.0.x`. Direct engine execution reported
+  `schema-engine-cli 0edf323efd1d98336f3f0a68684b56f689b900d3`; its size is
+  23,510,888 bytes and SHA-256 is
+  `29557c21d47da6f1695ec1a747cb6c607dade5e44e8b3e4fa687bd4dc226956d`.
+- Container-based `prisma migrate status` found the single committed migration
+  and reported the database schema up to date. Container-based `prisma validate`
+  passed, and a read-only migration diff reported no difference. No migration,
+  database write, Prisma Client generation, or Windows policy change occurred;
+  Smart App Control remains enabled. The development migration and schema files
+  remained unchanged.
+- All 18 focused migration-workflow tests passed, including allowed and rejected
+  arguments, fixed-service invocation, endpoint translation and rejection,
+  exit propagation, secret redaction, metadata-hardener conditions, and the
+  host-engine guard. The previously documented four high-severity Prisma-chain
+  findings remain open and unchanged. Better Auth configuration, explicit
+  account-linking enforcement, Google OAuth, email delivery, Vercel/Neon setup,
+  and functional authentication testing remain pending; authentication is not
+  functional.
+
 #### Minimal Prisma CLI configuration — 2026-09-11
 
 - `prisma.config.mjs` resolves `prisma/schema.prisma` and `.env.local` as

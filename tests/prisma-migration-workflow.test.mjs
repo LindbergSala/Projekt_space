@@ -10,9 +10,19 @@ import {
   runMigrationWorkflow,
   validateMigrateDevArguments,
 } from "../scripts/prisma-migrate-dev.mjs"
+import {
+  buildComposeArguments,
+  loadToolingEnvironment,
+  runContainerMigration,
+} from "../scripts/prisma-migrate-dev-docker.mjs"
 
 const SYNTHETIC_MIGRATION_URL =
   "postgresql://projekt_space_migrator:synthetic-password@127.0.0.1:55432/projekt_space_dev"
+const SYNTHETIC_ENVIRONMENT_SOURCE = [
+  "DATABASE_URL=postgresql://projekt_space_app:synthetic-app-password@127.0.0.1:55432/projekt_space_dev",
+  "MIGRATION_DATABASE_URL=postgresql://projekt_space_migrator:synthetic-migration-password@127.0.0.1:55432/projekt_space_dev",
+  "SHADOW_DATABASE_URL=postgresql://projekt_space_app:synthetic-app-password@127.0.0.1:55432/projekt_space_shadow",
+].join("\n")
 
 function createMetadataState(overrides = {}) {
   return {
@@ -298,4 +308,149 @@ test("migration wrapper accepts only the documented option forms", () => {
     validateMigrateDevArguments(["--name=next_migration"]),
     ["--name=next_migration"],
   )
+})
+
+test("host launcher translates only the documented local database endpoints", async () => {
+  const environment = await loadToolingEnvironment({
+    readEnvironmentFile: async () => SYNTHETIC_ENVIRONMENT_SOURCE,
+  })
+
+  assert.deepEqual(Object.keys(environment).sort(), [
+    "DATABASE_URL",
+    "MIGRATION_DATABASE_URL",
+    "SHADOW_DATABASE_URL",
+  ])
+
+  for (const value of Object.values(environment)) {
+    const url = new URL(value)
+    assert.equal(url.hostname, "postgres")
+    assert.equal(url.port, "5432")
+    assert.doesNotMatch(value, /127\.0\.0\.1|55432/u)
+  }
+})
+
+test("host launcher rejects unexpected endpoints without exposing credentials", async () => {
+  const secret = "never-print-this-launcher-secret"
+  const messages = []
+  const source = SYNTHETIC_ENVIRONMENT_SOURCE.replace(
+    "127.0.0.1:55432/projekt_space_dev",
+    `unexpected.example:5432/projekt_space_dev?secret=${secret}`,
+  )
+  let spawnCount = 0
+
+  const exitCode = await runContainerMigration([], {
+    loadEnvironment: () => loadToolingEnvironment({
+      readEnvironmentFile: async () => source,
+    }),
+    spawnCompose: () => {
+      spawnCount += 1
+      return { status: 0 }
+    },
+    reportError: (message) => messages.push(message),
+  })
+
+  assert.equal(exitCode, 1)
+  assert.equal(spawnCount, 0)
+  assert.equal(messages.length, 1)
+  assert.doesNotMatch(messages[0], new RegExp(secret))
+  assert.match(messages[0], /DATABASE_URL/)
+})
+
+test("host launcher rejects unsupported arguments before reading credentials", async () => {
+  let loadCount = 0
+  let spawnCount = 0
+  const messages = []
+
+  const exitCode = await runContainerMigration(["--schema", "other.prisma"], {
+    loadEnvironment: async () => {
+      loadCount += 1
+      return {}
+    },
+    spawnCompose: () => {
+      spawnCount += 1
+      return { status: 0 }
+    },
+    reportError: (message) => messages.push(message),
+  })
+
+  assert.equal(exitCode, 1)
+  assert.equal(loadCount, 0)
+  assert.equal(spawnCount, 0)
+  assert.deepEqual(messages, [
+    "Migration workflow rejected: Unsupported Prisma migrate dev option.",
+  ])
+})
+
+test("host launcher invokes only the fixed Compose service and propagates exit status", async () => {
+  const environment = {
+    DATABASE_URL: "synthetic-main",
+    MIGRATION_DATABASE_URL: "synthetic-migration",
+    SHADOW_DATABASE_URL: "synthetic-shadow",
+  }
+  let invocation
+
+  const exitCode = await runContainerMigration(
+    ["--create-only", "--name", "next_migration"],
+    {
+      loadEnvironment: async () => environment,
+      spawnCompose: (args, receivedEnvironment) => {
+        invocation = { args, environment: receivedEnvironment }
+        return { status: 23 }
+      },
+    },
+  )
+
+  assert.equal(exitCode, 23)
+  assert.deepEqual(invocation, {
+    args: [
+      "compose",
+      "--file",
+      "compose.prisma.yaml",
+      "--project-name",
+      "projekt-space-prisma-tooling",
+      "run",
+      "--rm",
+      "--no-deps",
+      "prisma-tooling",
+      "--create-only",
+      "--name",
+      "next_migration",
+    ],
+    environment,
+  })
+})
+
+test("host launcher command cannot select a Windows or host Prisma engine", () => {
+  const args = buildComposeArguments(["--create-only"])
+  const serialized = args.join(" ")
+
+  assert.equal(args[0], "compose")
+  assert.match(serialized, /prisma-tooling/u)
+  assert.doesNotMatch(serialized, /schema-engine|node_modules|prisma\.cmd/u)
+})
+
+test("inner wrapper refuses its default Prisma process outside the tooling container", async () => {
+  const previousMarker = process.env.PRISMA_TOOLING_CONTAINER
+  const messages = []
+  let hardenCount = 0
+
+  delete process.env.PRISMA_TOOLING_CONTAINER
+  try {
+    const exitCode = await runMigrationWorkflow(["--create-only"], {
+      hardenMetadata: async () => {
+        hardenCount += 1
+      },
+      reportError: (message) => messages.push(message),
+    })
+
+    assert.equal(exitCode, 1)
+    assert.equal(hardenCount, 1)
+    assert.deepEqual(messages, ["Prisma migrate dev failed to start."])
+  } finally {
+    if (previousMarker === undefined) {
+      delete process.env.PRISMA_TOOLING_CONTAINER
+    } else {
+      process.env.PRISMA_TOOLING_CONTAINER = previousMarker
+    }
+  }
 })
