@@ -81,8 +81,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   and schema validator both passed. The initial migration now exists at
   `prisma/migrations/20260915164738_add_better_auth_schema/migration.sql` and
   has been applied to the local development database. The four authentication
-  tables exist, match the Prisma schema, and are empty. Prisma Client generation
-  for this schema remains pending. Authentication configuration, explicit
+  tables exist, match the Prisma schema, and are empty. Prisma Client `7.10.0`
+  has been regenerated for this schema, and a bounded read-only check through
+  the shared runtime client returned zero rows for all four tables under the
+  expected restricted identity. Authentication configuration, explicit
   account-linking
   enforcement that disables implicit email-based linking, Google OAuth setup,
   and email delivery also remain pending. The schema alone does not make
@@ -301,8 +303,7 @@ The Codex repository inspection recorded the following verified checkpoint:
   the wrapper revoked all runtime privileges from this table without changing
   the application-object defaults. Authentication is not functional.
 - All 50 focused tests, JavaScript syntax checks, Prisma schema validation, and
-  lint pass. Prisma Client regeneration, Better Auth configuration, explicit
-  account-linking
+  lint pass. Better Auth configuration, explicit account-linking
   enforcement, Google OAuth, email delivery, Vercel/Neon setup, and functional
   authentication testing remain pending. Existing Prisma dependency security
   findings remain open and unchanged.
@@ -331,8 +332,8 @@ The Codex repository inspection recorded the following verified checkpoint:
   unchanged and have no grant option.
 - The Better Auth migration and Prisma schema hashes remained unchanged. The
   migration has now been applied locally through the wrapper; the four
-  application tables exist and remain empty. Prisma Client generation, Better
-  Auth configuration,
+  application tables exist and remain empty. Prisma Client generation was
+  subsequently completed. Better Auth configuration,
   explicit account-linking enforcement, Google OAuth, email delivery,
   Vercel/Neon setup, and functional authentication testing remain pending.
   Existing Prisma dependency security findings remain open and unchanged.
@@ -360,10 +361,40 @@ The Codex repository inspection recorded the following verified checkpoint:
   reported no difference.
 - The Prisma schema and migration SQL hashes remained unchanged, and no tracked
   file changed during migration execution. Prisma emitted no Client-generation
-  output. Prisma Client generation, Better Auth configuration, explicit
-  account-linking enforcement, Google OAuth, email delivery, Vercel/Neon setup,
-  and functional authentication testing remain pending. Authentication is not
-  functional, and the existing dependency security findings remain open.
+  output during that step; generation was subsequently completed as documented
+  below. Better Auth configuration, explicit account-linking enforcement,
+  Google OAuth, email delivery, Vercel/Neon setup, and functional authentication
+  testing remain pending. Authentication is not functional, and the existing
+  dependency security findings remain open.
+
+#### Prisma Client regeneration for authentication models — 2026-09-16
+
+- Repository-local `prisma` `7.10.0` successfully ran
+  `.\node_modules\.bin\prisma.cmd generate --schema prisma\schema.prisma` and
+  generated Prisma Client `7.10.0` in the expected ignored dependency location.
+  No package, lockfile, schema, migration, or tracked generated artifact changed.
+- An offline import confirmed the `PrismaClient` and `Prisma` exports. Generated
+  DMMF contains exactly `User`, `Account`, `Session`, and `Verification`, with
+  their expected scalar fields and the User-Session and User-Account relations;
+  no gameplay model is present. Instantiating the existing shared client exposed
+  the `user`, `account`, `session`, and `verification` delegates.
+- One bounded read-only runtime check through `lib/prisma.js` used only
+  `DATABASE_URL`, connected as `projekt_space_app` to `projekt_space_dev`, and
+  returned zero from each model's `count()` query. The same check confirmed no
+  effective runtime privilege on `_prisma_migrations`, then disconnected the
+  shared client cleanly. No database schema or data write occurred.
+- The repository-local `prisma migrate status` command could not be repeated in
+  this environment because Windows application-control policy blocked the
+  committed `schema-engine-windows.exe` from starting (`spawn UNKNOWN`). No
+  policy or dependency file was changed or bypassed. Read-only runtime queries
+  still confirmed all four empty tables and the expected database identity.
+  A separate read-only metadata query confirmed exactly one finished,
+  non-rolled-back migration record with one applied step.
+- This verifies generated-client metadata and restricted read access only.
+  Better Auth configuration, explicit account-linking policy, routes, sessions,
+  Google OAuth, email delivery, Vercel/Neon setup, and functional authentication
+  testing remain pending. Authentication is not functional, and the existing
+  dependency security findings remain open and unchanged.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 

@@ -167,9 +167,9 @@ Run the credential-handling regression tests with:
 node --test tests/setup-local-db-role.test.mjs
 ```
 
-Prisma Client generation and authentication integration remain separate tasks.
-Prisma CLI configuration, migration handling, and schema validation are
-described below.
+Prisma Client generation is performed separately from migration application,
+and authentication integration remains a separate task. Prisma CLI
+configuration, migration handling, and schema validation are described below.
 
 ## Prisma configuration
 
@@ -268,14 +268,16 @@ node_modules/.bin/prisma generate
 On Windows PowerShell, use `.\node_modules\.bin\prisma.cmd` instead. Validation
 passes without opening a database connection and confirms that
 `prisma.config.mjs` loads, its configured URLs resolve, and the schema is
-valid. Client generation and a `require('@prisma/client')` import check passed
-before the authentication models were added; regeneration for the current
-schema remains pending. The earlier import check confirmed `PrismaClient` and
-`Prisma` are exported, without instantiating a client. Neither command proves
-working authentication. Authentication integration remains a separate,
-unimplemented task. The open Prisma dependency audit
-findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this
-configuration and remain unresolved.
+valid. The client was regenerated from the current authentication schema with
+the pinned Prisma `7.10.0` CLI. Offline checks confirmed the matching generated
+version, the four authentication models and their fields and relations, and the
+`PrismaClient` and `Prisma` exports. A bounded read-only check through the
+shared server-side client confirmed all four model delegates and empty tables
+while connected as `projekt_space_app` to `projekt_space_dev`. This verifies
+client generation and restricted database access only, not working
+authentication. Authentication integration remains unimplemented. The open
+Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are
+unaffected by this configuration and remain unresolved.
 
 ### Standalone Prisma connectivity check
 
