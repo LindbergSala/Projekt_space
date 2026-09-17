@@ -424,7 +424,39 @@ on the schema cascade for its Account and Session. All four table counts
 returned from zero to zero, the task-owned server stopped, and its port was
 released.
 
+## Email/password authentication UI
+
+The minimum mobile-first UI is available at `/register`, `/login`, and
+`/account`. Registration requires a name, email, password, and matching password
+confirmation, using Better Auth's installed 8–128 character limits. Login uses
+the same-origin official Better Auth React client. Neither form handles tokens,
+cookies, sessions, or password storage directly.
+
+`/account` remains a Server Component. It passes the awaited Next.js request
+headers to `auth.api.getSession`, redirects unauthenticated requests to
+`/login`, and renders only the authenticated user's name and email. Its small
+client logout control signs out through Better Auth, returns to `/login`, and
+refreshes server state. The public home page links to login and registration.
+
+An HTTP rendering smoke check confirmed that signed-out `/account` redirects
+to `/login`, while `/login` and `/register` render their expected labels and
+autocomplete attributes. Focused tests, the complete Node test suite, lint, and
+the production build pass.
+
+The user manually verified the complete visible flow at approximately 390 px:
+registration reached `/account` with the expected name and email, logout
+returned to `/login`, signed-out `/account` redirected to `/login`, login with
+the same credentials reached the account page again, and the final logout
+succeeded. No horizontal scrolling or visibly broken mobile layout was
+observed. The user-confirmed temporary test identity was then deleted by its
+exact email without retaining that address in the repository; its Account was
+removed by cascade, and all four authentication table counts returned to zero.
+This was manual verification. Automated browser end-to-end testing, browser
+console verification, and comprehensive keyboard and focus testing were not
+performed.
+
 Google credentials and provider resources, email verification delivery,
-password-reset delivery, authentication UI, explicit account-linking UX,
-linking tests, and OAuth tests remain pending. The local email/password result
-does not establish production readiness or make authentication complete.
+password-reset delivery, explicit account-linking UX, automated browser
+end-to-end verification, linking tests, OAuth tests, deployment, and gameplay
+remain pending. The local email/password flow is usable, but authentication is
+not production-ready or complete.

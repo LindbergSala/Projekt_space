@@ -87,10 +87,13 @@ The Codex repository inspection recorded the following verified checkpoint:
   expected restricted identity. The minimum Better Auth server configuration
   and App Router handler now exist as documented below. Implicit email-based
   account linking is disabled. The complete local email/password request flow
-  has now passed as documented below. Google credentials and resources, email
-  verification, password reset, UI, explicit linking UX, OAuth testing, and
-  production authentication verification remain pending. Authentication is
-  not complete.
+  has now passed as documented below. The minimum email/password UI is
+  implemented with server-side account protection, and its complete visible
+  flow has been manually verified at a mobile viewport as documented below.
+  Automated browser E2E and browser-console verification were not performed.
+  Google credentials and resources, email verification, password reset,
+  explicit linking UX, OAuth testing, and production authentication
+  verification remain pending. Authentication is not complete.
 - The existing local setup now provisions a dedicated
   `projekt_space_shadow` database for Prisma Migrate and configures
   `SHADOW_DATABASE_URL` without exposing credentials. The restricted
@@ -512,6 +515,53 @@ The Codex repository inspection recorded the following verified checkpoint:
   pending. This local result does not establish production readiness or make
   authentication complete. The four previously documented high-severity
   Prisma-chain dependency findings remain open and unchanged.
+
+#### Email/password authentication UI — 2026-09-17
+
+- `/register` provides labelled name, email, password, and password-confirmation
+  fields, client-side confirmation matching, the installed Better Auth
+  8–128-character password limits, pending controls, `aria-live` errors, and
+  safe generic failure messages. `/login` provides labelled email and password
+  fields, generic invalid-credential feedback, pending controls, and a link to
+  registration. Both use a shared same-origin client created by the official
+  `better-auth/react` `createAuthClient` export; no server configuration,
+  token, cookie, session, password, or OAuth handling is duplicated.
+- `/account` remains an async Server Component. Its server-only adapter passes
+  awaited Next.js request headers to `auth.api.getSession`, redirects a missing
+  session to `/login`, and reduces the authenticated user to name and email
+  before rendering. The only client island is a logout button that calls
+  Better Auth, navigates to `/login`, and refreshes server state. No internal
+  user, account, session, or token identifier is rendered.
+- Shared CSS supplies a mobile-first single-column layout, 44-pixel minimum
+  controls, visible labels and focus outlines, overflow-safe account values,
+  and responsive spacing. The public page now has only two small authentication
+  entry links; no gameplay or general redesign was introduced.
+- A task-owned development server returned HTTP 307 from signed-out `/account`
+  to `/login`; `/login` and `/register` returned HTTP 200 and rendered all
+  required labels and autocomplete values. The user then manually verified the
+  complete visible flow at approximately 390 px: registration navigated to
+  `/account`, the expected name and email were displayed, logout navigated to
+  `/login`, signed-out `/account` redirected to `/login`, login with the same
+  credentials succeeded, the account page was reached again, and final logout
+  succeeded. No horizontal scrolling or visibly broken mobile layout was
+  observed. This was manual verification; automated browser E2E, browser-console
+  verification, and comprehensive keyboard and focus verification were not
+  performed.
+- Exactly one user-confirmed temporary test identity was located by its exact
+  email and had one credential Account, no Session, and no matching Verification
+  row. No unrelated authentication row existed. The User was deleted, its
+  Account was removed by the committed cascade, and all User, Account, Session,
+  and Verification counts returned to zero. The personal address was not added
+  to repository content. Port 3021 had no listener, and PostgreSQL remained
+  running and healthy.
+- All seven focused UI tests and all 70 Node tests passed. Lint passed, and one
+  production build with process-scoped synthetic auth values passed, rendering
+  `/account` dynamically and `/login` and `/register` statically. Google OAuth,
+  email verification and password-reset delivery, explicit account linking,
+  automated browser end-to-end verification, deployment, and gameplay remain
+  pending. The local email/password UI is manually verified and usable, but
+  authentication is not production-ready. Existing dependency security findings
+  remain open and unchanged.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 

@@ -38,7 +38,7 @@ body {
   text-align: center;
 }
 
-h1 {
+.intro h1 {
   margin: 0;
   font-size: clamp(2.5rem, 14vw, 5.5rem);
   line-height: 1;
@@ -54,8 +54,214 @@ p {
   line-height: 1.6;
 }
 
+a {
+  color: #9dccff;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: #d8ecff;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 0.2rem solid #7fc1ff;
+  outline-offset: 0.18rem;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.auth-entry {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.primary-link,
+.secondary-link,
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary-link,
+.primary-button {
+  background: #b9dcff;
+  color: #07111f;
+}
+
+.primary-link:hover,
+.primary-button:hover:not(:disabled) {
+  background: #d8ecff;
+  color: #07111f;
+}
+
+.secondary-link,
+.secondary-button {
+  border-color: #527294;
+  background: #10233a;
+  color: #e5f1ff;
+}
+
+.secondary-link:hover,
+.secondary-button:hover:not(:disabled) {
+  border-color: #8bb8e5;
+  background: #17304d;
+  color: #ffffff;
+}
+
+.auth-page {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 1rem;
+  overflow-x: hidden;
+}
+
+.auth-card {
+  width: min(100%, 28rem);
+  border: 1px solid #29496c;
+  border-radius: 0.9rem;
+  background: rgb(8 24 42 / 92%);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 25%);
+  padding: clamp(1.25rem, 5vw, 2rem);
+}
+
+.auth-heading h1 {
+  margin: 0;
+  font-size: clamp(2rem, 10vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.auth-heading > p:not(.eyebrow) {
+  margin: 0.8rem 0 0;
+  font-size: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.65rem;
+  color: #8dbce8;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.6rem;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.form-field label {
+  color: #f4f7fb;
+  font-weight: 700;
+}
+
+.form-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #527294;
+  border-radius: 0.5rem;
+  background: #071523;
+  color: #ffffff;
+  padding: 0.65rem 0.75rem;
+}
+
+.form-field input:disabled,
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.field-help,
+.form-message,
+.auth-alternative {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.field-help {
+  color: #a9bdd3;
+}
+
+.form-message {
+  min-height: 1.35rem;
+  color: #ffb7b7;
+}
+
+.primary-button,
+.secondary-button {
+  width: 100%;
+}
+
+.auth-alternative {
+  margin-top: 1.3rem;
+  color: #c8d7ea;
+  text-align: center;
+}
+
+.account-details {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.6rem 0 0;
+}
+
+.account-details div {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-radius: 0.55rem;
+  background: #0b1b2d;
+  padding: 0.85rem;
+}
+
+.account-details dt {
+  color: #8dbce8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-details dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.logout-action {
+  margin-top: 1.25rem;
+}
+
 @media (min-width: 48rem) {
   .home {
     padding: 3rem;
+  }
+
+  .auth-page {
+    padding: 2rem;
   }
 }
