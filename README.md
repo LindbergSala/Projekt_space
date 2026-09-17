@@ -168,9 +168,9 @@ Run the credential-handling regression tests with:
 node --test tests/setup-local-db-role.test.mjs
 ```
 
-Prisma Client generation is performed separately from migration application,
-and authentication integration remains a separate task. Prisma CLI
-configuration, migration handling, and schema validation are described below.
+Prisma Client generation is performed separately from migration application.
+Prisma CLI configuration, migration handling, schema validation, and the
+subsequent authentication integration are described below.
 
 ## Prisma configuration
 
@@ -302,11 +302,11 @@ separately from the current authentication schema with the pinned Prisma
 authentication models and their fields and relations, and the `PrismaClient`
 and `Prisma` exports. A bounded read-only check through the shared server-side
 client confirmed all four model delegates and empty tables while connected as
-`projekt_space_app` to `projekt_space_dev`. This verifies client generation and
-restricted database access only, not working authentication. Authentication
-integration remains unimplemented. The open Prisma dependency audit findings
-in [PROJECT_STATUS.md](PROJECT_STATUS.md) are unaffected by this configuration
-and remain unresolved.
+`projekt_space_app` to `projekt_space_dev`. That check verifies client
+generation and restricted database access only; the later server foundation
+and local email/password HTTP verification are documented below. The open
+Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are
+unaffected by this configuration and remain unresolved.
 
 ### Standalone Prisma connectivity check
 
@@ -408,11 +408,23 @@ the Node.js runtime, and is forced dynamic. The installed session endpoint is:
 GET /api/auth/get-session
 ```
 
-One unauthenticated local request returned HTTP 200 with body `null`,
-`Cache-Control: no-store`, and `Pragma: no-cache`. The user, account, session,
-and verification tables each contained zero rows before and after the request.
+A local request-level verification completed the built-in email/password flow:
+sign-up, authenticated session read, sign-out, rejected stale session, sign-in
+with the same credentials, a second authenticated session read, and a final
+sign-out with another rejected stale session. Every request returned HTTP 200.
+The development HTTP cookie was `better-auth.session_token` with `HttpOnly`,
+`SameSite=Lax`, `Path=/`, and `Max-Age`; `Secure` was absent on the local HTTP
+origin, and sign-out expired the cookie with `Max-Age=0`.
+
+The flow created exactly one temporary User, one credential Account, and one
+Session at a time. The stored password was present and differed from the
+plaintext value, `emailVerified` remained false, and no Verification row was
+created. Cleanup deleted only the uniquely identified temporary user and relied
+on the schema cascade for its Account and Session. All four table counts
+returned from zero to zero, the task-owned server stopped, and its port was
+released.
 
 Google credentials and provider resources, email verification delivery,
-password-reset delivery, authentication UI, explicit account-linking UX, and
-functional sign-up, sign-in, sign-out, linking, and OAuth testing remain
-pending. This server foundation does not make authentication complete.
+password-reset delivery, authentication UI, explicit account-linking UX,
+linking tests, and OAuth tests remain pending. The local email/password result
+does not establish production readiness or make authentication complete.

@@ -86,9 +86,11 @@ The Codex repository inspection recorded the following verified checkpoint:
   the shared runtime client returned zero rows for all four tables under the
   expected restricted identity. The minimum Better Auth server configuration
   and App Router handler now exist as documented below. Implicit email-based
-  account linking is disabled. Google credentials and resources, email
-  verification, password reset, UI, explicit linking UX, and functional
-  authentication testing remain pending. Authentication is not complete.
+  account linking is disabled. The complete local email/password request flow
+  has now passed as documented below. Google credentials and resources, email
+  verification, password reset, UI, explicit linking UX, OAuth testing, and
+  production authentication verification remain pending. Authentication is
+  not complete.
 - The existing local setup now provisions a dedicated
   `projekt_space_shadow` database for Prisma Migrate and configures
   `SHADOW_DATABASE_URL` without exposing credentials. The restricted
@@ -473,6 +475,43 @@ The Codex repository inspection recorded the following verified checkpoint:
   and real sign-up, sign-in, sign-out, linking, and OAuth testing remain
   pending. Authentication is not complete. The four previously documented
   high-severity Prisma-chain dependency findings remain open and unchanged.
+
+#### Better Auth email/password HTTP verification — 2026-09-17
+
+- One task-owned Next.js development server used a process-scoped synthetic
+  Better Auth secret and local base URL with the existing restricted database
+  configuration. A real HTTP flow passed in this order: sign-up, authenticated
+  session read, sign-out, rejected stale session, sign-in with the same
+  credentials, authenticated session read, sign-out, and a second rejected
+  stale session. Every request returned HTTP 200. Both authenticated session
+  reads belonged to the expected temporary User, and both post-sign-out reads
+  returned JSON `null`.
+- Sign-up and sign-in returned only the expected public User fields alongside
+  a session token; no password field was exposed and `emailVerified` remained
+  false. The development HTTP session cookie was
+  `better-auth.session_token` with `HttpOnly`, `SameSite=Lax`, `Path=/`, and
+  `Max-Age`. `Secure` was absent on the local HTTP origin. Each sign-out set the
+  same cookie name with `Max-Age=0`.
+- Baseline counts were zero for User, Account, Session, and Verification.
+  Sign-up created exactly one temporary User, one credential Account using the
+  User ID as its account identity, and one Session. Password storage was
+  present and did not equal the plaintext password. Sign-out removed its
+  Session, sign-in created one new Session, the second sign-out removed it, and
+  no Verification row was created.
+- Cleanup ran in `finally`, selected the task-owned User by its exact unique
+  `example.invalid` email, deleted it, and relied on the committed cascade for
+  its Account and any Session. The separately scoped Verification cleanup found
+  nothing to delete. Prisma disconnected, all four counts returned exactly to
+  the zero baseline, and no existing row was available to modify. The
+  task-owned server stopped, its port had zero listeners, and PostgreSQL
+  remained running and healthy.
+- No application defect was found, so authentication code and tests were not
+  changed and lint and build were not rerun. Google OAuth, email verification
+  and password-reset delivery, authentication UI, explicit account-linking UX,
+  linking and OAuth tests, and production authentication verification remain
+  pending. This local result does not establish production readiness or make
+  authentication complete. The four previously documented high-severity
+  Prisma-chain dependency findings remain open and unchanged.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 
