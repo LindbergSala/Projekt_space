@@ -84,11 +84,11 @@ The Codex repository inspection recorded the following verified checkpoint:
   tables exist, match the Prisma schema, and are empty. Prisma Client `7.10.0`
   has been regenerated for this schema, and a bounded read-only check through
   the shared runtime client returned zero rows for all four tables under the
-  expected restricted identity. Authentication configuration, explicit
-  account-linking
-  enforcement that disables implicit email-based linking, Google OAuth setup,
-  and email delivery also remain pending. The schema alone does not make
-  authentication functional; this work awaits review and commit.
+  expected restricted identity. The minimum Better Auth server configuration
+  and App Router handler now exist as documented below. Implicit email-based
+  account linking is disabled. Google credentials and resources, email
+  verification, password reset, UI, explicit linking UX, and functional
+  authentication testing remain pending. Authentication is not complete.
 - The existing local setup now provisions a dedicated
   `projekt_space_shadow` database for Prisma Migrate and configures
   `SHADOW_DATABASE_URL` without exposing credentials. The restricted
@@ -439,6 +439,40 @@ The Codex repository inspection recorded the following verified checkpoint:
   account-linking enforcement, Google OAuth, email delivery, Vercel/Neon setup,
   and functional authentication testing remain pending; authentication is not
   functional.
+
+#### Better Auth server foundation — 2026-09-17
+
+- `lib/auth.js` is a server-only Better Auth `1.7.4` module that reuses the
+  existing shared Prisma Client through the installed `prismaAdapter` with
+  `provider: "postgresql"`. Email/password is enabled. No second Prisma client,
+  custom ID generator, session implementation, password hashing, OAuth state,
+  cookie handling, or token handling was added.
+- The module requires an explicit non-placeholder `BETTER_AUTH_SECRET` of at
+  least 32 characters and accepts `BETTER_AUTH_URL` as the server origin.
+  Google is omitted when both provider variables are absent, enabled only when
+  both are present, and a partial pair fails with a fixed non-secret error.
+  Real Google credentials or provider resources were not configured.
+- `account.accountLinking.disableImplicitLinking` is explicitly `true`.
+  Better Auth's installed OAuth linking implementation checks this flag before
+  linking an OAuth identity to an existing email match, so matching email alone
+  cannot merge accounts. Explicit authenticated account linking remains future
+  work.
+- `app/api/auth/[...all]/route.js` uses the installed
+  `better-auth/next-js` `toNextJsHandler`, exports only `GET` and `POST`, selects
+  the Node.js runtime, and forces dynamic rendering. A task-owned development
+  server received one unauthenticated `GET /api/auth/get-session`; it returned
+  HTTP 200, JSON `null`, `Cache-Control: no-store`, and `Pragma: no-cache`.
+  The server was stopped and its port was released.
+- Read-only snapshots before and after the request both reported zero User,
+  Account, Session, and Verification rows. No schema, migration, generated
+  client, database object, or data changed. Seven focused tests, all 63 Node
+  tests, lint, and one production build with synthetic non-production auth
+  values passed. The build recognized the auth catch-all route as dynamic.
+- Google credentials and OAuth resources, email verification delivery,
+  password-reset delivery, authentication UI, explicit account-linking UX,
+  and real sign-up, sign-in, sign-out, linking, and OAuth testing remain
+  pending. Authentication is not complete. The four previously documented
+  high-severity Prisma-chain dependency findings remain open and unchanged.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 

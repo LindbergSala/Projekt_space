@@ -379,3 +379,40 @@ a Next.js request; no code correction or credential change produced that
 result. The route is not an application feature. Authentication integration,
 gameplay, and the Prisma dependency audit findings in
 [PROJECT_STATUS.md](PROJECT_STATUS.md) remain pending.
+
+## Better Auth server foundation
+
+`lib/auth.js` is the server-only Better Auth `1.7.4` configuration. It reuses
+the shared Prisma client through `prismaAdapter` with the `postgresql` provider,
+enables Better Auth's built-in email/password flow, and leaves ID generation,
+sessions, password hashing, OAuth state, cookies, and tokens at library
+defaults. No second Prisma client is created.
+
+The configuration requires `BETTER_AUTH_SECRET` to be a non-placeholder value
+of at least 32 characters, matching the installed version's documented minimum;
+use a randomly generated, high-entropy value. `BETTER_AUTH_URL` supplies the
+server origin. Google is omitted when both `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` are absent and enabled only when both are present. A
+partial Google configuration fails with a fixed error that contains no value.
+
+Implicit linking based on a matching email is explicitly disabled with
+`account.accountLinking.disableImplicitLinking: true`. A Google identity with
+an email already used by another account is therefore not silently merged;
+future explicit linking must occur from an authenticated flow.
+
+The App Router catch-all route at `app/api/auth/[...all]/route.js` uses the
+installed package's `toNextJsHandler`, exports only `GET` and `POST`, runs on
+the Node.js runtime, and is forced dynamic. The installed session endpoint is:
+
+```text
+GET /api/auth/get-session
+```
+
+One unauthenticated local request returned HTTP 200 with body `null`,
+`Cache-Control: no-store`, and `Pragma: no-cache`. The user, account, session,
+and verification tables each contained zero rows before and after the request.
+
+Google credentials and provider resources, email verification delivery,
+password-reset delivery, authentication UI, explicit account-linking UX, and
+functional sign-up, sign-in, sign-out, linking, and OAuth testing remain
+pending. This server foundation does not make authentication complete.
