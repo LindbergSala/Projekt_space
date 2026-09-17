@@ -94,6 +94,13 @@ The Codex repository inspection recorded the following verified checkpoint:
   Google credentials and resources, email verification, password reset,
   explicit linking UX, OAuth testing, and production authentication
   verification remain pending. Authentication is not complete.
+- Repository-level Vercel and Neon preparation is implemented as documented
+  below. Clean Vercel Linux installs have a fixed Prisma Client generation
+  hook, production migration has a separate argumentless `migrate deploy`
+  wrapper, pooled/direct Neon endpoints are matched by full endpoint identity,
+  and Better Auth has fail-closed Production and Preview origins. No Vercel or
+  Neon project is linked or provisioned, and no deployment or production
+  migration has occurred.
 - The existing local setup now provisions a dedicated
   `projekt_space_shadow` database for Prisma Migrate and configures
   `SHADOW_DATABASE_URL` without exposing credentials. The restricted
@@ -562,6 +569,59 @@ The Codex repository inspection recorded the following verified checkpoint:
   pending. The local email/password UI is manually verified and usable, but
   authentication is not production-ready. Existing dependency security findings
   remain open and unchanged.
+
+#### Vercel and Neon repository preparation — 2026-09-17
+
+- `postinstall` now runs `scripts/prisma-generate-vercel.mjs`. The wrapper
+  accepts no arguments and invokes only pinned repository-local Prisma `7.10.0`
+  `generate` when both Linux and Vercel's `VERCEL=1` marker are present. It
+  removes migration and shadow URLs from the child environment. Windows,
+  ordinary local Linux, and the locked Prisma migration-tooling image skip
+  generation without starting Prisma, preserving the Smart App Control-safe
+  local workflow. Generated Client files remain ignored under `node_modules`.
+- `npm run prisma:migrate:deploy` is a separate production release command. Its
+  wrapper accepts no arguments, refuses non-Linux hosts, requires a
+  syntactically valid direct Neon `MIGRATION_DATABASE_URL`, removes runtime and
+  shadow URLs from the Prisma child, and invokes only repository-local
+  `prisma migrate deploy` with the fixed `prisma.deploy.config.mjs`. The
+  dedicated config loads no credential file and defines no shadow database. It
+  is not called by install, build, startup, or ordinary deployment.
+- `prisma.config.mjs` retains the same-host local runtime/migrator layout and
+  separate-shadow validation. For Neon it now accepts only the documented
+  pooled runtime label and direct migration label for the same complete
+  endpoint identity, routing domain, port, and database. Unrelated branches,
+  reversed or ambiguous pooler pairs, malformed URLs, and database-name
+  mismatches fail with value-free errors. The local Docker launcher continues
+  to enforce distinct application and migration credentials.
+- Better Auth `1.7.4` was checked from its installed types and implementation:
+  static `baseURL` and `trustedOrigins` are supported. Local development keeps
+  an explicit origin, Production requires explicit HTTPS, and Vercel Preview
+  derives HTTPS only from a validated single-label `*.vercel.app` `VERCEL_URL`
+  while `VERCEL=1` and `VERCEL_ENV=preview`. Missing, arbitrary, or conflicting
+  Preview origins fail closed. The resolved origin is the sole trusted origin;
+  request and forwarded-host inference is not used.
+- Vercel runtime must use pooled `DATABASE_URL`. Neon's direct/unpooled value
+  is mapped to `MIGRATION_DATABASE_URL` only for the separate migration step.
+  Preview must use an isolated Neon branch or database and never Production.
+  Local Docker variables remain local-only, and `SHADOW_DATABASE_URL` is not a
+  Vercel variable.
+- Prisma schema and migration SQL remain unchanged. The existing four
+  high-severity Prisma-chain findings remain open and were not remediated or
+  altered.
+- Initial focused tests passed 31/31, the corrected explicit complete Node
+  invocation passed 88/88, lint passed, isolated network-disabled Linux
+  generation produced Prisma Client `7.10.0`, and one production build with
+  process-scoped synthetic values passed. Final review then corrected the
+  tooling-image build context for the guarded `postinstall`; all nine changed
+  JavaScript files passed syntax checks, all ten affected readiness tests
+  passed, lint passed again, and the tooling Compose definition validated.
+  The earlier directory-form Node command ran no repository tests because that
+  invocation is unsupported on this Windows Node version.
+- Vercel CLI installation and login, project linking, Neon provisioning,
+  environment-variable writes, production migration, Preview and Production
+  deployment, Google OAuth, email delivery, and functional production
+  authentication verification remain pending. No external resource was
+  created or modified, and production readiness has not been claimed.
 
 #### Minimal Prisma CLI configuration — 2026-09-11
 

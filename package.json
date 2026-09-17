@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "prisma:migrate:dev": "node scripts/prisma-migrate-dev-docker.mjs"
+    "postinstall": "node scripts/prisma-generate-vercel.mjs",
+    "prisma:migrate:dev": "node scripts/prisma-migrate-dev-docker.mjs",
+    "prisma:migrate:deploy": "node scripts/prisma-migrate-deploy.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

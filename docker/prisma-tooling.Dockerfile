@@ -7,6 +7,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --chown=node:node package.json package-lock.json ./
+COPY --chown=node:node scripts/prisma-generate-vercel.mjs ./scripts/
 RUN npm ci && npm cache clean --force
 
 RUN mkdir -p /workspace/prisma/migrations /workspace/scripts \

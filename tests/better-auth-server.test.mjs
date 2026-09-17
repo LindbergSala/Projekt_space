@@ -27,6 +27,9 @@ function processEnvironment(overrides = {}) {
     BETTER_AUTH_URL: "http://127.0.0.1:3000",
     GOOGLE_CLIENT_ID: "",
     GOOGLE_CLIENT_SECRET: "",
+    VERCEL: "",
+    VERCEL_ENV: "",
+    VERCEL_URL: "",
     ...overrides,
   }
 }
@@ -56,6 +59,7 @@ test("auth configuration imports with process-scoped synthetic values", () => {
     const options = auth.options;
     const output = {
       baseURL: options.baseURL,
+      trustedOrigins: options.trustedOrigins,
       emailAndPassword: options.emailAndPassword?.enabled,
       implicitLinking: options.account?.accountLinking?.disableImplicitLinking,
       hasDatabaseAdapter: typeof options.database === "function",
@@ -69,6 +73,7 @@ test("auth configuration imports with process-scoped synthetic values", () => {
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), {
     baseURL: "http://127.0.0.1:3000",
+    trustedOrigins: ["http://127.0.0.1:3000"],
     emailAndPassword: true,
     implicitLinking: true,
     hasDatabaseAdapter: true,
@@ -76,6 +81,122 @@ test("auth configuration imports with process-scoped synthetic values", () => {
     googleConfigured: false,
     generateIdConfigured: false,
   })
+})
+
+test("production requires and trusts one explicit HTTPS auth origin", () => {
+  const result = runModuleCheck(`
+    const { auth } = await import(${JSON.stringify(AUTH_URL)});
+    process.stdout.write(JSON.stringify({
+      baseURL: auth.options.baseURL,
+      trustedOrigins: auth.options.trustedOrigins,
+    }));
+  `, {
+    NODE_ENV: "production",
+    VERCEL: "1",
+    VERCEL_ENV: "production",
+    BETTER_AUTH_URL: "https://projekt-space.example.invalid",
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), {
+    baseURL: "https://projekt-space.example.invalid",
+    trustedOrigins: ["https://projekt-space.example.invalid"],
+  })
+})
+
+test("production rejects missing or non-HTTPS auth origins without exposing values", () => {
+  const secretHost = "never-print-this-origin.example.invalid"
+
+  for (const baseURL of ["", `http://${secretHost}`]) {
+    const result = runModuleCheck(
+      `await import(${JSON.stringify(AUTH_URL)});`,
+      {
+        NODE_ENV: "production",
+        VERCEL: "1",
+        VERCEL_ENV: "production",
+        BETTER_AUTH_URL: baseURL,
+      },
+    )
+
+    assert.notEqual(result.status, 0)
+    assert.match(
+      result.stderr,
+      /Better Auth requires a valid explicit application origin/,
+    )
+    assert.doesNotMatch(result.stderr, new RegExp(secretHost))
+  }
+})
+
+test("Vercel preview derives and trusts only its validated system URL", () => {
+  const result = runModuleCheck(`
+    const { auth } = await import(${JSON.stringify(AUTH_URL)});
+    process.stdout.write(JSON.stringify({
+      baseURL: auth.options.baseURL,
+      trustedOrigins: auth.options.trustedOrigins,
+    }));
+  `, {
+    NODE_ENV: "production",
+    VERCEL: "1",
+    VERCEL_ENV: "preview",
+    VERCEL_URL: "projekt-space-git-feature-example.vercel.app",
+    BETTER_AUTH_URL: "",
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), {
+    baseURL: "https://projekt-space-git-feature-example.vercel.app",
+    trustedOrigins: [
+      "https://projekt-space-git-feature-example.vercel.app",
+    ],
+  })
+})
+
+test("Vercel preview rejects arbitrary or missing system hosts", () => {
+  const secretHost = "never-print-this-preview.example.invalid"
+  const cases = [
+    { VERCEL_URL: secretHost },
+    { VERCEL_URL: "" },
+    { VERCEL: "", VERCEL_URL: "projekt-space-preview.vercel.app" },
+  ]
+
+  for (const environment of cases) {
+    const result = runModuleCheck(
+      `await import(${JSON.stringify(AUTH_URL)});`,
+      {
+        NODE_ENV: "production",
+        VERCEL: "1",
+        VERCEL_ENV: "preview",
+        BETTER_AUTH_URL: "",
+        ...environment,
+      },
+    )
+
+    assert.notEqual(result.status, 0)
+    assert.match(
+      result.stderr,
+      /Better Auth preview origin configuration is invalid/,
+    )
+    assert.doesNotMatch(result.stderr, new RegExp(secretHost))
+  }
+})
+
+test("Vercel preview rejects a production auth-origin fallback", () => {
+  const result = runModuleCheck(
+    `await import(${JSON.stringify(AUTH_URL)});`,
+    {
+      NODE_ENV: "production",
+      VERCEL: "1",
+      VERCEL_ENV: "preview",
+      VERCEL_URL: "projekt-space-preview.vercel.app",
+      BETTER_AUTH_URL: "https://projekt-space.example.invalid",
+    },
+  )
+
+  assert.notEqual(result.status, 0)
+  assert.match(
+    result.stderr,
+    /Better Auth preview origin configuration is invalid/,
+  )
 })
 
 test("missing and invalid Better Auth secrets fail with a fixed error", () => {

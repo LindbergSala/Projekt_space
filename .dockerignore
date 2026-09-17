@@ -3,3 +3,4 @@
 !package-lock.json
 !docker/
 !docker/prisma-tooling.Dockerfile
+!scripts/prisma-generate-vercel.mjs

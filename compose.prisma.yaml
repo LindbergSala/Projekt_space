@@ -40,6 +40,10 @@ services:
         source: ./scripts/setup-local-db-role.mjs
         target: /workspace/scripts/setup-local-db-role.mjs
         read_only: true
+      - type: bind
+        source: ./scripts/prisma-url-policy.mjs
+        target: /workspace/scripts/prisma-url-policy.mjs
+        read_only: true
     networks:
       - postgres
     read_only: true

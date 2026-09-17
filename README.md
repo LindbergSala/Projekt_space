@@ -17,6 +17,12 @@ database connection yet.
 npm ci
 ```
 
+The `postinstall` hook generates Prisma Client only when Vercel identifies a
+Linux build through its system environment. It exits successfully without
+starting Prisma on Windows and in the local Linux migration-tooling image.
+This keeps Windows installation compatible with Smart App Control and avoids
+coupling local dependency installation to a native schema engine.
+
 ## Development
 
 ```bash
@@ -184,10 +190,15 @@ restricted application `DATABASE_URL` is required: if it is missing, Prisma's
 own `env()` helper throws an error naming only the missing variable, never its
 value. `MIGRATION_DATABASE_URL` is optional so validation, generation, and
 builds remain usable when migration credentials are not present. When it is
-available, the Prisma CLI uses it as `datasource.url`; it must identify the same
-logical development database as `DATABASE_URL`, while using the dedicated
-migration identity. `SHADOW_DATABASE_URL` is also optional for non-migration
-commands and is supplied as `datasource.shadowDatabaseUrl` when present.
+available, the Prisma CLI uses it as `datasource.url`. Local URLs must use the
+same host, port, and database. For Neon, `DATABASE_URL` must use the pooled
+hostname and `MIGRATION_DATABASE_URL` the corresponding direct hostname: the
+endpoint identity, complete routing domain, port, and database must match
+exactly. Unrelated branches, reversed or ambiguous pooler pairs, and database
+mismatches fail without printing either URL. The dedicated local migration
+identity remains enforced by the Docker launcher. `SHADOW_DATABASE_URL` is
+also optional for non-migration commands and is supplied as
+`datasource.shadowDatabaseUrl` when present.
 Fail-fast checks reject incompatible main, migration, or shadow targets without
 including any URL in the error.
 
@@ -308,6 +319,43 @@ and local email/password HTTP verification are documented below. The open
 Prisma dependency audit findings in [PROJECT_STATUS.md](PROJECT_STATUS.md) are
 unaffected by this configuration and remain unresolved.
 
+### Vercel and Neon preparation
+
+Clean Vercel Linux installs run `scripts/prisma-generate-vercel.mjs` through
+`postinstall`. The wrapper accepts no arguments and invokes only the pinned
+repository-local Prisma CLI with `generate`. It removes migration and shadow
+URLs from the child environment. Outside a Vercel Linux build it is a no-op;
+in particular, it never starts the blocked Windows Prisma engine. Generated
+Client files stay under ignored `node_modules` paths.
+
+Vercel runtime must receive a pooled `DATABASE_URL` for its own environment.
+Production and every Preview must use different Neon branches or databases;
+Preview must never fall back to Production. Local development continues to use
+the Docker PostgreSQL URLs in ignored `.env.local` and must not pull Neon
+credentials into that file.
+
+Production migration is a separate, explicitly authorized release step:
+
+```bash
+npm run prisma:migrate:deploy
+```
+
+The command accepts no arguments and runs only in an explicitly authorized
+Linux release environment. It requires `MIGRATION_DATABASE_URL`, checks that
+it is a direct Neon endpoint, and invokes only repository-local
+`prisma migrate deploy` with `prisma.deploy.config.mjs`. That dedicated config
+loads no local credential file, contains no shadow database, and uses only the
+direct migration URL. The wrapper does not run from `postinstall`, `build`,
+application startup, or ordinary deployment. Never replace it with
+`migrate dev`, `db push`, or a reset in Production.
+
+Neon's pooled `DATABASE_URL` maps directly to the runtime variable. Its
+direct/unpooled value, commonly exposed as `DATABASE_URL_UNPOOLED`, must be
+mapped to `MIGRATION_DATABASE_URL` only in the separate migration context.
+Google OAuth, email delivery, Vercel project linking, Neon provisioning,
+production migration, Preview deployment, and Production deployment remain
+pending.
+
 ### Standalone Prisma connectivity check
 
 `scripts/verify-prisma-connection.mjs` is a small, repeatable script that
@@ -390,8 +438,15 @@ defaults. No second Prisma client is created.
 
 The configuration requires `BETTER_AUTH_SECRET` to be a non-placeholder value
 of at least 32 characters, matching the installed version's documented minimum;
-use a randomly generated, high-entropy value. `BETTER_AUTH_URL` supplies the
-server origin. Google is omitted when both `GOOGLE_CLIENT_ID` and
+use a randomly generated, high-entropy value. Local development requires its
+explicit `BETTER_AUTH_URL`. Production requires an explicit HTTPS origin.
+Vercel Preview instead derives one HTTPS origin only from Vercel's `VERCEL_URL`
+when `VERCEL=1` and `VERCEL_ENV=preview`; the hostname must be one valid
+single-label `*.vercel.app` deployment hostname. A missing or arbitrary host,
+or a conflicting Production `BETTER_AUTH_URL`, fails closed. The exact resolved
+origin is also the only configured `trustedOrigins` entry. Better Auth is
+therefore never asked to infer the auth origin from request or forwarded-host
+headers. Google is omitted when both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` are absent and enabled only when both are present. A
 partial Google configuration fails with a fixed error that contains no value.
 
