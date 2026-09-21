@@ -439,14 +439,15 @@ defaults. No second Prisma client is created.
 The configuration requires `BETTER_AUTH_SECRET` to be a non-placeholder value
 of at least 32 characters, matching the installed version's documented minimum;
 use a randomly generated, high-entropy value. Local development requires its
-explicit `BETTER_AUTH_URL`. Production requires an explicit HTTPS origin.
-Vercel Preview instead derives one HTTPS origin only from Vercel's `VERCEL_URL`
-when `VERCEL=1` and `VERCEL_ENV=preview`; the hostname must be one valid
-single-label `*.vercel.app` deployment hostname. A missing or arbitrary host,
-or a conflicting Production `BETTER_AUTH_URL`, fails closed. The exact resolved
-origin is also the only configured `trustedOrigins` entry. Better Auth is
-therefore never asked to infer the auth origin from request or forwarded-host
-headers. Google is omitted when both `GOOGLE_CLIENT_ID` and
+explicit `BETTER_AUTH_URL`. Production requires an explicit HTTPS origin. On
+Vercel Production, that origin remains the base URL and Vercel's exact
+generated deployment origin is also trusted after validating `VERCEL_URL` as a
+single-label `*.vercel.app` hostname. Vercel Preview instead derives one HTTPS
+origin only from the same validated system value when `VERCEL=1` and
+`VERCEL_ENV=preview`. A missing or arbitrary deployment host, or a conflicting
+Production `BETTER_AUTH_URL` in Preview, fails closed. Better Auth is never
+asked to infer an auth origin from request or forwarded-host headers. Google is
+omitted when both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` are absent and enabled only when both are present. A
 partial Google configuration fails with a fixed error that contains no value.
 

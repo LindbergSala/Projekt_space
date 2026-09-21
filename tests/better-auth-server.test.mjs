@@ -83,7 +83,26 @@ test("auth configuration imports with process-scoped synthetic values", () => {
   })
 })
 
-test("production requires and trusts one explicit HTTPS auth origin", () => {
+test("non-Vercel production requires and trusts one explicit HTTPS auth origin", () => {
+  const result = runModuleCheck(`
+    const { auth } = await import(${JSON.stringify(AUTH_URL)});
+    process.stdout.write(JSON.stringify({
+      baseURL: auth.options.baseURL,
+      trustedOrigins: auth.options.trustedOrigins,
+    }));
+  `, {
+    NODE_ENV: "production",
+    BETTER_AUTH_URL: "https://projekt-space.example.invalid",
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), {
+    baseURL: "https://projekt-space.example.invalid",
+    trustedOrigins: ["https://projekt-space.example.invalid"],
+  })
+})
+
+test("Vercel production also trusts only its exact validated deployment URL", () => {
   const result = runModuleCheck(`
     const { auth } = await import(${JSON.stringify(AUTH_URL)});
     process.stdout.write(JSON.stringify({
@@ -94,13 +113,91 @@ test("production requires and trusts one explicit HTTPS auth origin", () => {
     NODE_ENV: "production",
     VERCEL: "1",
     VERCEL_ENV: "production",
-    BETTER_AUTH_URL: "https://projekt-space.example.invalid",
+    VERCEL_URL: "projekt-space-a1b2c3-example.vercel.app",
+    BETTER_AUTH_URL: "https://projekt-space.vercel.app",
   })
 
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), {
-    baseURL: "https://projekt-space.example.invalid",
-    trustedOrigins: ["https://projekt-space.example.invalid"],
+    baseURL: "https://projekt-space.vercel.app",
+    trustedOrigins: [
+      "https://projekt-space.vercel.app",
+      "https://projekt-space-a1b2c3-example.vercel.app",
+    ],
+  })
+  assert.equal(
+    JSON.parse(result.stdout).trustedOrigins.includes(
+      "https://unrelated-project.vercel.app",
+    ),
+    false,
+  )
+})
+
+test("Vercel production rejects unrelated or missing deployment hosts", () => {
+  const secretHost = "never-print-this-production.example.invalid"
+  const cases = [
+    { VERCEL_URL: secretHost },
+    { VERCEL_URL: "" },
+    { VERCEL: "", VERCEL_URL: "projekt-space-a1b2c3-example.vercel.app" },
+  ]
+
+  for (const environment of cases) {
+    const result = runModuleCheck(
+      `await import(${JSON.stringify(AUTH_URL)});`,
+      {
+        NODE_ENV: "production",
+        VERCEL: "1",
+        VERCEL_ENV: "production",
+        BETTER_AUTH_URL: "https://projekt-space.vercel.app",
+        ...environment,
+      },
+    )
+
+    assert.notEqual(result.status, 0)
+    assert.match(
+      result.stderr,
+      /Better Auth production deployment origin configuration is invalid/,
+    )
+    assert.doesNotMatch(result.stderr, new RegExp(secretHost))
+  }
+})
+
+test("Vercel production rejects a request from another Vercel origin", () => {
+  const result = runModuleCheck(`
+    const { auth } = await import(${JSON.stringify(AUTH_URL)});
+    const response = await auth.handler(new Request(
+      "https://projekt-space.vercel.app/api/auth/sign-in/email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://unrelated-project.vercel.app",
+        },
+        body: JSON.stringify({
+          email: "origin-check@example.invalid",
+          password: "synthetic-password",
+        }),
+      },
+    ));
+    process.stdout.write(JSON.stringify({
+      status: response.status,
+      body: await response.json(),
+    }));
+  `, {
+    NODE_ENV: "production",
+    VERCEL: "1",
+    VERCEL_ENV: "production",
+    VERCEL_URL: "projekt-space-a1b2c3-example.vercel.app",
+    BETTER_AUTH_URL: "https://projekt-space.vercel.app",
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), {
+    status: 403,
+    body: {
+      code: "INVALID_ORIGIN",
+      message: "Invalid origin",
+    },
   })
 })
 
