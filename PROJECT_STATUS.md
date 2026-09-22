@@ -13,7 +13,9 @@ in Swedish.
 
 Mobile-first design and development are confirmed: player journeys and
 interfaces must remain responsive on larger screens with touch-usable controls.
-Vercel is the selected hosting platform when deployment becomes appropriate.
+Vercel is the selected hosting platform. The first Preview and Production
+deployments are reported as Ready, with the evidence boundary and remaining
+limitations recorded in the 2026-09-22 checkpoint below.
 
 ## Inspected baseline — 2026-09-09
 
@@ -67,7 +69,7 @@ The Codex repository inspection recorded the following verified checkpoint:
   requests returned 503 while the database endpoint was unavailable. With the
   existing container healthy, the development route returned HTTP 200 and
   verified the expected request-level database identity. Authentication
-  integration and gameplay remain pending.
+  integration is now implemented as described below; gameplay remains pending.
 - `better-auth` `1.7.4` is pinned as a runtime dependency. Its Prisma adapter
   export and `disableImplicitLinking` option were confirmed in the installed
   package; offline imports, the dependency tree, lint, and the production build
@@ -92,15 +94,19 @@ The Codex repository inspection recorded the following verified checkpoint:
   flow has been manually verified at a mobile viewport as documented below.
   Automated browser E2E and browser-console verification were not performed.
   Google credentials and resources, email verification, password reset,
-  explicit linking UX, OAuth testing, and production authentication
-  verification remain pending. Authentication is not complete.
+  explicit linking UX, OAuth testing, and comprehensive production
+  authentication verification remain pending. One limited Production sign-in
+  and account-page result is user-reported in the 2026-09-22 checkpoint;
+  authentication is not complete.
 - Repository-level Vercel and Neon preparation is implemented as documented
   below. Clean Vercel Linux installs have a fixed Prisma Client generation
   hook, production migration has a separate argumentless `migrate deploy`
   wrapper, pooled/direct Neon endpoints are matched by full endpoint identity,
-  and Better Auth has fail-closed Production and Preview origins. No Vercel or
-  Neon project is linked or provisioned, and no deployment or production
-  migration has occurred.
+  and Better Auth has fail-closed Production and Preview origin handling. The
+  user reports that separate Neon Preview and Production branches are now
+  provisioned and migrated and that both Vercel environments have reached
+  Ready; these external results were not independently inspected from the
+  repository.
 - The existing local setup now provisions a dedicated
   `projekt_space_shadow` database for Prisma Migrate and configures
   `SHADOW_DATABASE_URL` without exposing credentials. The restricted
@@ -111,6 +117,36 @@ The Codex repository inspection recorded the following verified checkpoint:
   metadata with the runtime role. The dedicated restricted migration identity
   documented below resolved that separation without broadening runtime access.
 - Other foundation documents still need reconciliation and integration.
+
+## First Vercel deployments — 2026-09-22
+
+- Repository inspection independently confirms that `main` and `origin/main`
+  point to `c4f40fe fix(auth): trust generated Vercel production origin`. The
+  committed `20260915164738_add_better_auth_schema` migration defines the four
+  Better Auth tables, and the authentication configuration on that revision
+  validates and trusts the exact generated Vercel Production origin alongside
+  the explicit HTTPS base origin. These are repository facts, not verification
+  of external deployment or database state.
+- The user reports that the committed Prisma migration succeeded on separate
+  Neon Preview and Production branches. The user also reports that the former
+  Neon Vercel Marketplace resource was disconnected and that `DATABASE_URL`
+  and Better Auth secrets were configured separately in Vercel. No connection
+  string, secret value, Vercel control-plane state, or Neon database state was
+  accessed or independently verified for this checkpoint.
+- The user reports that Preview and Production deployments reached Ready and
+  that the Production deployment for `c4f40fe` is assigned the project domain
+  `projekt-space.vercel.app`. The user successfully signed in and viewed
+  `/account` on the generated Production deployment URL. After an SSL error on
+  the user's desktop, the user separately reported that sign-in worked on a
+  mobile phone over mobile data. These browser results were not agent-observed;
+  the cause of the desktop SSL error remains unknown, and the report does not
+  establish that the short project domain works on every device or network.
+- Registration by a new, independent test user on the latest Production
+  deployment has not been verified. Email delivery, Google OAuth, explicit
+  account linking, comprehensive Production authentication behavior,
+  production security, and operational readiness also remain unverified.
+  Gameplay systems and production background-event processing are not
+  implemented.
 
 ## Application foundation — 2026-09-09
 
@@ -571,6 +607,10 @@ The Codex repository inspection recorded the following verified checkpoint:
   remain open and unchanged.
 
 #### Vercel and Neon repository preparation — 2026-09-17
+
+This section preserves the repository-preparation state recorded on its date.
+Its then-pending external deployment steps are superseded by the user-reported
+2026-09-22 checkpoint above.
 
 - `postinstall` now runs `scripts/prisma-generate-vercel.mjs`. The wrapper
   accepts no arguments and invokes only pinned repository-local Prisma `7.10.0`
