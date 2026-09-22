@@ -94,6 +94,94 @@ test("server-side session guard returns only public account fields", () => {
   })
 })
 
+test("server-side game identity returns only the verified session user ID", () => {
+  const result = runModuleCheck(`
+    const { resolveAuthenticatedUserId } = await import(${JSON.stringify(AUTH_SESSION_POLICY_URL)});
+    const userId = await resolveAuthenticatedUserId({
+      getRequestHeaders: async () => new Headers({ "x-test": "expected" }),
+      getSession: async ({ headers }) => {
+        if (headers.get("x-test") !== "expected") {
+          throw new Error("missing request headers");
+        }
+        return {
+          user: { name: "Test Pilot", email: "pilot@example.invalid", id: "verified-user-id" },
+          session: { id: "internal-session", token: "internal-token" },
+        };
+      },
+      redirectUnauthenticated: () => { throw new Error("unexpected redirect"); },
+    });
+    process.stdout.write(JSON.stringify(userId));
+  `)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(JSON.parse(result.stdout), "verified-user-id")
+})
+
+test("server-side game identity redirects a missing session to login", () => {
+  const result = runModuleCheck(`
+    const { resolveAuthenticatedUserId } = await import(${JSON.stringify(AUTH_SESSION_POLICY_URL)});
+    const calls = [];
+    const redirectResult = await resolveAuthenticatedUserId({
+      getRequestHeaders: async () => new Headers(),
+      getSession: async () => null,
+      redirectUnauthenticated: (destination) => {
+        calls.push(destination);
+        return "redirected";
+      },
+    });
+    process.stdout.write(JSON.stringify({ calls, redirectResult }));
+  `)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: ["/login"],
+    redirectResult: "redirected",
+  })
+})
+
+test("server-side game identity fails closed for missing or malformed user IDs", () => {
+  const result = runModuleCheck(`
+    const { resolveAuthenticatedUserId } = await import(${JSON.stringify(AUTH_SESSION_POLICY_URL)});
+    const invalidUsers = [
+      undefined,
+      {},
+      { id: undefined },
+      { id: null },
+      { id: "" },
+      { id: "   " },
+      { id: " padded-id " },
+      { id: 123 },
+    ];
+    const messages = [];
+    for (const user of invalidUsers) {
+      try {
+        await resolveAuthenticatedUserId({
+          getRequestHeaders: async () => new Headers(),
+          getSession: async () => ({
+            user,
+            session: { id: "never-expose-session", token: "never-expose-token" },
+          }),
+          redirectUnauthenticated: () => { throw new Error("unexpected redirect"); },
+        });
+        messages.push("unexpected success");
+      } catch (error) {
+        messages.push(error.message);
+      }
+    }
+    process.stdout.write(JSON.stringify(messages));
+  `)
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(
+    JSON.parse(result.stdout),
+    Array(8).fill("Authenticated session is missing a valid user ID."),
+  )
+  assert.doesNotMatch(
+    `${result.stdout}\n${result.stderr}`,
+    /never-expose-session|never-expose-token/,
+  )
+})
+
 test("Next server adapter supplies Better Auth and awaited request headers", async () => {
   const adapter = await source("lib/auth-session.js")
 
@@ -102,6 +190,8 @@ test("Next server adapter supplies Better Auth and awaited request headers", asy
   assert.match(adapter, /getSession: auth\.api\.getSession/)
   assert.match(adapter, /getRequestHeaders: headers/)
   assert.match(adapter, /redirectUnauthenticated: redirect/)
+  assert.match(adapter, /export function requireAuthenticatedUserId\(\)/)
+  assert.match(adapter, /return resolveAuthenticatedUserId\(\{/)
   assert.doesNotMatch(adapter, /cookie|token|console\./)
 })
 
