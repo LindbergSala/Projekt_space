@@ -17,6 +17,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  ownedPlanets  Planet[]
 
   @@unique([email])
   @@map("user")
@@ -69,4 +70,13 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Planet {
+  id      String @id
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([ownerId])
+  @@map("planet")
 }
