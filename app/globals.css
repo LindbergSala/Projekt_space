@@ -252,8 +252,35 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.account-navigation {
+  width: 100%;
+  margin-top: 1.25rem;
+}
+
 .logout-action {
   margin-top: 1.25rem;
+}
+
+.planet-empty {
+  margin: 1.6rem 0 0;
+  font-size: 1rem;
+}
+
+.planet-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planet-list-item {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-radius: 0.55rem;
+  background: #0b1b2d;
+  padding: 0.85rem;
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 48rem) {

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import LogoutButton from "./logout-button.js";
 import { requireAuthenticatedUser } from "../../lib/auth-session.js";
 
@@ -26,6 +28,10 @@ export default async function AccountPage() {
             <dd>{user.email}</dd>
           </div>
         </dl>
+
+        <Link className="secondary-link account-navigation" href="/planets">
+          View planets
+        </Link>
 
         <LogoutButton />
       </section>
