@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { getAuthenticatedUserPlanetIds } from "../../lib/owned-planets.js";
 import { establishFirstPlanetAction } from "./actions.js";
 
@@ -32,7 +34,12 @@ export default async function PlanetsPage() {
           <ul className="planet-list">
             {planetIds.map((planetId) => (
               <li className="planet-list-item" key={planetId}>
-                {planetId}
+                <Link
+                  className="planet-list-link"
+                  href={`/planets/${encodeURIComponent(planetId)}`}
+                >
+                  {planetId}
+                </Link>
               </li>
             ))}
           </ul>

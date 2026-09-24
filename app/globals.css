@@ -287,8 +287,24 @@ button:disabled {
   border: 1px solid #29496c;
   border-radius: 0.55rem;
   background: #0b1b2d;
-  padding: 0.85rem;
   overflow-wrap: anywhere;
+}
+
+.planet-list-link {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0.85rem;
+}
+
+.planet-id {
+  margin: 1.6rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.planet-back-link {
+  width: 100%;
+  margin-top: 1.25rem;
 }
 
 @media (min-width: 48rem) {
