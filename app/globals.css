@@ -263,7 +263,15 @@ button:disabled {
 
 .planet-empty {
   margin: 1.6rem 0 0;
+}
+
+.planet-empty p {
+  margin: 0;
   font-size: 1rem;
+}
+
+.starter-planet-action {
+  margin-top: 1.25rem;
 }
 
 .planet-list {

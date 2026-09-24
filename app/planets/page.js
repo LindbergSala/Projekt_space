@@ -1,4 +1,5 @@
 import { getAuthenticatedUserPlanetIds } from "../../lib/owned-planets.js";
+import { establishFirstPlanetAction } from "./actions.js";
 
 export const metadata = {
   title: "Planets | Projekt_space",
@@ -16,7 +17,17 @@ export default async function PlanetsPage() {
         </div>
 
         {planetIds.length === 0 ? (
-          <p className="planet-empty">You do not have any planets yet.</p>
+          <div className="planet-empty">
+            <p>You do not have any planets yet.</p>
+            <form
+              action={establishFirstPlanetAction}
+              className="starter-planet-action"
+            >
+              <button className="primary-button" type="submit">
+                Establish first planet
+              </button>
+            </form>
+          </div>
         ) : (
           <ul className="planet-list">
             {planetIds.map((planetId) => (
