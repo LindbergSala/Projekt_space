@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getAuthenticatedUserPlanetIds } from "../../lib/owned-planets.js";
+import { getAuthenticatedUserPlanets } from "../../lib/owned-planets.js";
 import { establishFirstPlanetAction } from "./actions.js";
 
 export const metadata = {
@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 export default async function PlanetsPage() {
-  const planetIds = await getAuthenticatedUserPlanetIds();
+  const planets = await getAuthenticatedUserPlanets();
 
   return (
     <main className="auth-page">
@@ -18,7 +18,7 @@ export default async function PlanetsPage() {
           <h1 id="planets-title">Your planets</h1>
         </div>
 
-        {planetIds.length === 0 ? (
+        {planets.length === 0 ? (
           <div className="planet-empty">
             <p>You do not have any planets yet.</p>
             <form
@@ -32,13 +32,14 @@ export default async function PlanetsPage() {
           </div>
         ) : (
           <ul className="planet-list">
-            {planetIds.map((planetId) => (
-              <li className="planet-list-item" key={planetId}>
+            {planets.map((planet) => (
+              <li className="planet-list-item" key={planet.id}>
                 <Link
                   className="planet-list-link"
-                  href={`/planets/${encodeURIComponent(planetId)}`}
+                  href={`/planets/${encodeURIComponent(planet.id)}`}
                 >
-                  {planetId}
+                  <span className="planet-list-name">{planet.name}</span>
+                  <span className="planet-list-id">{planet.id}</span>
                 </Link>
               </li>
             ))}

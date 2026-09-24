@@ -22,13 +22,14 @@ async function source(relativePath) {
   return readFile(path.join(ROOT_DIRECTORY, relativePath), "utf8")
 }
 
-test("planet list links IDs without changing its empty-state action", async () => {
+test("planet list links names and IDs without changing its empty-state action", async () => {
   const page = await source("app/planets/page.js")
 
   assert.match(page, /import Link from ["']next\/link["']/u)
-  assert.match(page, /planetIds\.map\(\(planetId\) =>/u)
-  assert.match(page, /href=\{`\/planets\/\$\{encodeURIComponent\(planetId\)\}`\}/u)
-  assert.match(page, /\{planetId\}\s*<\/Link>/u)
+  assert.match(page, /planets\.map\(\(planet\) =>/u)
+  assert.match(page, /href=\{`\/planets\/\$\{encodeURIComponent\(planet\.id\)\}`\}/u)
+  assert.match(page, /\{planet\.name\}/u)
+  assert.match(page, /\{planet\.id\}/u)
   assert.match(page, />You do not have any planets yet\.<\/p>/u)
   assert.match(page, /action=\{establishFirstPlanetAction\}/u)
   assert.match(page, />\s*Establish first planet\s*<\/button>/u)
@@ -50,7 +51,7 @@ test("authenticated detail operation derives owner identity on the server", asyn
   )
 })
 
-test("owned planet detail query combines ID and owner while selecting only ID", async () => {
+test("owned planet detail query combines ID and owner while selecting only name and ID", async () => {
   let receivedQuery
   const planet = await queryOwnedPlanetById({
     planetId: "planet-owned",
@@ -58,7 +59,7 @@ test("owned planet detail query combines ID and owner while selecting only ID", 
     planetModel: {
       async findFirst(query) {
         receivedQuery = query
-        return { id: "planet-owned" }
+        return { id: "planet-owned", name: "Owned Planet" }
       },
     },
   })
@@ -70,9 +71,10 @@ test("owned planet detail query combines ID and owner while selecting only ID", 
     },
     select: {
       id: true,
+      name: true,
     },
   })
-  assert.deepEqual(planet, { id: "planet-owned" })
+  assert.deepEqual(planet, { id: "planet-owned", name: "Owned Planet" })
 })
 
 test("invalid planet IDs return null without querying the database", async () => {
@@ -116,13 +118,13 @@ test("planet detail page awaits params and hides missing or foreign planets", as
   assert.match(page, /const \{ planetId \} = await params/u)
   assert.match(page, /await getAuthenticatedUserPlanetById\(planetId\)/u)
   assert.match(page, /if \(planet === null\) \{\s*notFound\(\)/u)
-  assert.match(page, /<h1 id="planet-title">Planet<\/h1>/u)
+  assert.match(page, /<h1 id="planet-title">\{planet\.name\}<\/h1>/u)
   assert.match(page, /<p className="planet-id">\{planet\.id\}<\/p>/u)
   assert.match(page, /href="\/planets"/u)
   assert.match(page, />\s*Back to planets\s*<\/Link>/u)
   assert.doesNotMatch(
     page,
-    /ownerId|userId|create|update|upsert|delete|action=|console\./u,
+    /ownerId|userId|create|update|upsert|delete|console\./u,
   )
 })
 
@@ -178,7 +180,7 @@ test("local detail queries isolate owners and roll back all synthetic data", asy
             ownerId: firstOwnerId,
             planetModel: transaction.planet,
           }),
-          { id: firstPlanetId },
+          { id: firstPlanetId, name: "Unnamed Planet" },
         )
         assert.equal(
           await queryOwnedPlanetById({

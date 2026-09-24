@@ -293,13 +293,58 @@ button:disabled {
 .planet-list-link {
   display: flex;
   min-height: 2.75rem;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.3rem;
   padding: 0.85rem;
 }
 
+.planet-list-name {
+  font-weight: 700;
+}
+
+.planet-list-id,
 .planet-id {
-  margin: 1.6rem 0 0;
+  color: #a9bfd6;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.85rem;
   overflow-wrap: anywhere;
+}
+
+.planet-details {
+  margin: 1.6rem 0 0;
+}
+
+.planet-details p {
+  margin: 0;
+}
+
+.planet-id {
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+.planet-rename-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.6rem;
+}
+
+.planet-rename-form input[type="text"] {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #527294;
+  border-radius: 0.45rem;
+  background: #071523;
+  color: #ffffff;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+}
+
+.planet-rename-form input[type="text"]:focus-visible {
+  outline: 3px solid #8bc5ff;
+  outline-offset: 2px;
 }
 
 .planet-back-link {

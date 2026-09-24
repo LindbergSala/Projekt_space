@@ -74,6 +74,7 @@ model Verification {
 
 model Planet {
   id      String @id
+  name    String @default("Unnamed Planet") @db.VarChar(40)
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 

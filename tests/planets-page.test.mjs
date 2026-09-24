@@ -11,39 +11,40 @@ async function source(relativePath) {
   return readFile(path.join(ROOT_DIRECTORY, relativePath), "utf8")
 }
 
-test("/planets uses the parameterless authenticated planet operation", async () => {
+test("/planets uses the parameterless authenticated planets operation", async () => {
   const page = await source("app/planets/page.js")
 
   assert.doesNotMatch(page, /^["']use client["']/mu)
   assert.match(
     page,
-    /import \{ getAuthenticatedUserPlanetIds \} from ["']\.\.\/\.\.\/lib\/owned-planets\.js["']/u,
+    /import \{ getAuthenticatedUserPlanets \} from ["']\.\.\/\.\.\/lib\/owned-planets\.js["']/u,
   )
   assert.match(page, /export default async function PlanetsPage\(\)/u)
   assert.match(
     page,
-    /const planetIds = await getAuthenticatedUserPlanetIds\(\)/u,
+    /const planets = await getAuthenticatedUserPlanets\(\)/u,
   )
-  assert.equal((page.match(/getAuthenticatedUserPlanetIds\(/gu) ?? []).length, 1)
+  assert.equal((page.match(/getAuthenticatedUserPlanets\(/gu) ?? []).length, 1)
   assert.doesNotMatch(page, /prisma|fetch\(|api\//u)
 })
 
-test("/planets renders only the returned planet IDs", async () => {
+test("/planets renders only the returned planet names and IDs", async () => {
   const page = await source("app/planets/page.js")
 
-  assert.match(page, /planetIds\.map\(\(planetId\) =>/u)
-  assert.match(page, /key=\{planetId\}/u)
-  assert.match(page, /\{planetId\}/u)
+  assert.match(page, /planets\.map\(\(planet\) =>/u)
+  assert.match(page, /key=\{planet\.id\}/u)
+  assert.match(page, /\{planet\.name\}/u)
+  assert.match(page, /\{planet\.id\}/u)
   assert.doesNotMatch(
     page,
-    /planet\.(?:name|owner|ownerId|coordinates|resources|faction|units)/u,
+    /planet\.(?:owner|ownerId|coordinates|resources|faction|units)/u,
   )
 })
 
 test("/planets renders a clear empty state", async () => {
   const page = await source("app/planets/page.js")
 
-  assert.match(page, /planetIds\.length === 0/u)
+  assert.match(page, /planets\.length === 0/u)
   assert.match(page, />You do not have any planets yet\.<\/p>/u)
 })
 
@@ -52,8 +53,8 @@ test("/planets preserves the deterministic order returned by the operation", asy
   const query = await source("lib/owned-planets-query.js")
 
   assert.match(query, /orderBy: \{ id: ["']asc["'] \}/u)
-  assert.match(query, /return planets\.map\(\(\{ id \}\) => id\)/u)
-  assert.match(page, /planetIds\.map\(\(planetId\) =>/u)
+  assert.match(query, /select: \{ id: true, name: true \}/u)
+  assert.match(page, /planets\.map\(\(planet\) =>/u)
   assert.doesNotMatch(page, /\.sort\(/u)
 })
 

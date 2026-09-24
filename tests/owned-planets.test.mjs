@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 
-import { queryOwnedPlanetIds } from "../lib/owned-planets-query.js"
+import { queryOwnedPlanets } from "../lib/owned-planets-query.js"
 import { parseCompatibleDatabaseUrl } from "../scripts/setup-local-db-role.mjs"
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url))
@@ -24,7 +24,7 @@ test("server operation derives ownership from the authenticated session", async 
   assert.match(source, /^import "server-only"$/mu)
   assert.match(
     source,
-    /export async function getAuthenticatedUserPlanetIds\(\)/u,
+    /export async function getAuthenticatedUserPlanets\(\)/u,
   )
   assert.match(source, /const ownerId = await requireAuthenticatedUserId\(\)/u)
   assert.match(source, /ownerId,/u)
@@ -32,24 +32,30 @@ test("server operation derives ownership from the authenticated session", async 
   assert.doesNotMatch(source, /request|searchParams|formData|params|console\./u)
 })
 
-test("owned-planet query filters by owner and selects only ordered IDs", async () => {
+test("owned-planet query filters by owner and selects only ordered names and IDs", async () => {
   let query
-  const planetIds = await queryOwnedPlanetIds({
+  const planets = await queryOwnedPlanets({
     ownerId: "authenticated-owner",
     planetModel: {
       findMany: async (receivedQuery) => {
         query = receivedQuery
-        return [{ id: "planet-a" }, { id: "planet-b" }]
+        return [
+          { id: "planet-a", name: "Alpha" },
+          { id: "planet-b", name: "Beta" },
+        ]
       },
     },
   })
 
   assert.deepEqual(query, {
     where: { ownerId: "authenticated-owner" },
-    select: { id: true },
+    select: { id: true, name: true },
     orderBy: { id: "asc" },
   })
-  assert.deepEqual(planetIds, ["planet-a", "planet-b"])
+  assert.deepEqual(planets, [
+    { id: "planet-a", name: "Alpha" },
+    { id: "planet-b", name: "Beta" },
+  ])
 })
 
 test("owned-planet query excludes another owner and returns an empty list", async () => {
@@ -108,14 +114,16 @@ test("owned-planet query excludes another owner and returns an empty list", asyn
         })
 
         assert.deepEqual(
-          await queryOwnedPlanetIds({
+          await queryOwnedPlanets({
             ownerId: firstOwnerId,
             planetModel: transaction.planet,
           }),
-          [...firstPlanetIds].sort(),
+          [...firstPlanetIds]
+            .sort()
+            .map((id) => ({ id, name: "Unnamed Planet" })),
         )
         assert.deepEqual(
-          await queryOwnedPlanetIds({
+          await queryOwnedPlanets({
             ownerId: emptyOwnerId,
             planetModel: transaction.planet,
           }),

@@ -139,9 +139,9 @@ test("planet rendering is read-only and mutation requires the empty-state form",
   const page = await source("app/planets/page.js")
   const action = await source("app/planets/actions.js")
 
-  assert.match(page, /const planetIds = await getAuthenticatedUserPlanetIds\(\)/u)
+  assert.match(page, /const planets = await getAuthenticatedUserPlanets\(\)/u)
   assert.doesNotMatch(page, /ensureAuthenticatedUserStarterPlanet\(/u)
-  assert.match(page, /planetIds\.length === 0/u)
+  assert.match(page, /planets\.length === 0/u)
   assert.match(page, /<form\s+action=\{establishFirstPlanetAction\}/u)
   assert.match(page, />\s*Establish first planet\s*<\/button>/u)
   assert.equal((page.match(/<form/gu) ?? []).length, 1)
@@ -151,8 +151,12 @@ test("planet rendering is read-only and mutation requires the empty-state form",
   assert.match(action, /export async function establishFirstPlanetAction\(\)/u)
   assert.match(action, /await ensureAuthenticatedUserStarterPlanet\(\)/u)
   assert.match(action, /redirect\("\/planets"\)/u)
+  const establishAction = action.match(
+    /export async function establishFirstPlanetAction\(\) \{[\s\S]*?\n\}/u,
+  )?.[0]
+  assert.ok(establishAction)
   assert.doesNotMatch(
-    action,
+    establishAction,
     /ownerId|userId|formData|FormData|searchParams|params|cookies|localStorage|sessionStorage/u,
   )
 })
@@ -221,6 +225,13 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
       newPlanetId,
     )
     assert.equal(await prisma.planet.count({ where: { ownerId: newOwnerId } }), 1)
+    assert.deepEqual(
+      await prisma.planet.findUnique({
+        where: { id: newPlanetId },
+        select: { id: true, name: true },
+      }),
+      { id: newPlanetId, name: "Unnamed Planet" },
+    )
 
     const concurrentIds = await Promise.all(
       Array.from({ length: 8 }, () =>
