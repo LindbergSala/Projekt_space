@@ -3,10 +3,164 @@
 **Status:** Canon reference  
 **Scope:** Launch-faction ground units only  
 **Factions:** Orthevan Directorate, Zhyreth Brood, Nhalorin Continuum, Draskyr Clans  
-**Unit count:** 12 total — 3 per faction  
-**Purpose:** Single source of truth for the ground-unit concepts, battlefield roles, and approved visual designs established so far.
+**Gameplay unit count:** 15 definitions — 7 shared general units and 8 faction-unique units
 
-> This document records only what has been established. Numerical combat stats are intentionally excluded because they have not yet been locked.
+**Available roster:** 9 planetary units per faction — 7 shared and 2 unique
+
+**Purpose:** Single source of truth for planetary gameplay-unit concepts, battlefield roles, and approved faction presentations established so far.
+
+> This document records only what has been established. Numerical statistics, combat values, balance values, production costs, and production times are intentionally excluded because they have not yet been locked.
+
+All four factions use the same seven general planetary gameplay definitions. Their gameplay roles, future statistics, production logic, and battlefield functions are shared. Factions may express those units through distinct visual design, equipment appearance, animation, effects, and presentation without creating additional gameplay definitions.
+
+Each faction also has exactly two faction-unique planetary units. The global gameplay registry therefore contains seven shared general definitions and eight faction-unique definitions, while each faction can access nine definitions.
+
+---
+
+# SHARED GENERAL PLANETARY UNITS
+
+## Line Infantry
+
+**Category:** Infantry
+
+**Primary function:** Standard frontline troops used to capture territory, hold positions, and engage enemy infantry.
+
+### Battlefield roles
+
+- Basic and most common planetary combat unit.
+- Effective against other standard infantry.
+- Balanced between offense and defense.
+- Cost-efficient for taking and holding territory.
+- Vulnerable to specialized assault units, heavy weapons, and armored units.
+
+### Design principle
+
+Line Infantry is the benchmark unit around which the rest of the planetary roster is balanced.
+
+## Assault Infantry
+
+**Category:** Infantry
+
+**Primary function:** Close-range offensive troops specialized in breaking enemy infantry formations and fortified positions.
+
+### Battlefield roles
+
+- Strong against Line Infantry.
+- Effective during offensive planetary assaults.
+- Effective against defended infantry positions.
+- Shorter effective combat range than Line Infantry.
+- Vulnerable to Heavy Weapons Infantry.
+- Poor against armored units.
+
+### Design principle
+
+Assault Infantry is the standard offensive infantry option. It sacrifices flexibility for greater close-range offensive capability.
+
+## Heavy Weapons Infantry
+
+**Category:** Infantry
+
+**Primary function:** Specialized infantry equipped to engage armored units, heavy targets, and fortified positions.
+
+### Battlefield roles
+
+- Strong against Light Tanks.
+- Capable of threatening Heavy Tanks.
+- Effective against fortified targets.
+- Vulnerable to Assault Infantry.
+- Less efficient than Line Infantry in normal infantry combat.
+- More expensive and slower to produce than Line Infantry.
+
+### Design principle
+
+Heavy Weapons Infantry provides the cheapest general anti-armour option and prevents players from being forced to counter tanks exclusively with other tanks.
+
+The terms “more expensive” and “slower” describe qualitative relationships only. No costs or production times are defined.
+
+## Light Tank
+
+**Category:** Armoured
+
+**Primary function:** A fast armored combat unit designed to overwhelm infantry and provide mobile frontline firepower.
+
+### Battlefield roles
+
+- Strong against Line Infantry.
+- Strong against Assault Infantry.
+- Effective against Combat Engineers.
+- Capable of fighting other Light Tanks.
+- Vulnerable to Heavy Weapons Infantry.
+- Clearly inferior to Heavy Tanks in direct armored combat.
+- Faster and cheaper than Heavy Tanks.
+
+### Design principle
+
+Light Tanks provide mobility and anti-infantry firepower rather than dedicated anti-tank capability.
+
+The terms “faster” and “cheaper” describe qualitative relationships only. No speed values or costs are defined.
+
+## Heavy Tank
+
+**Category:** Armoured
+
+**Primary function:** A heavily armored frontline combat unit designed to destroy armored targets, break fortified positions, and survive sustained enemy fire.
+
+### Battlefield roles
+
+- Strong against Light Tanks.
+- Strong against Line Infantry.
+- Strong against Assault Infantry.
+- Effective against fortified positions.
+- Highly resistant to ordinary infantry weapons.
+- Vulnerable to dedicated anti-armour units.
+- More expensive and slower than Light Tanks.
+- One of the most expensive general planetary combat units.
+
+### Design principle
+
+Heavy Tanks win through armor, firepower, and endurance rather than mobility.
+
+All cost and speed relationships are qualitative. No numerical costs or speed values are defined.
+
+## Field Artillery
+
+**Category:** Fire Support
+
+**Primary function:** Long-range fire support designed to bombard concentrated enemy forces and fortified positions from behind the frontline.
+
+### Battlefield roles
+
+- Strong against concentrated infantry.
+- Strong against Assault Infantry before they reach the frontline.
+- Effective against fortified positions.
+- Provides fire support from behind friendly forces.
+- Weak in direct combat.
+- Highly vulnerable when reached by enemy units.
+- Limited effectiveness against Heavy Tanks.
+
+### Design principle
+
+Field Artillery provides range, bombardment, and siege support rather than direct frontline combat power.
+
+## Combat Engineer
+
+**Category:** Support
+
+**Primary function:** A specialized support unit used to repair armored forces, reinforce defensive positions, and assist assaults against fortified targets.
+
+### Battlefield roles
+
+- Repairs Light Tanks.
+- Repairs Heavy Tanks.
+- Repairs and reinforces defensive structures.
+- Improves fortified positions.
+- Supports attacks against enemy fortifications.
+- Weak in direct combat.
+- Requires protection from combat units.
+
+### Design principle
+
+Combat Engineers provide repair, fortification, and siege utility rather than direct damage.
 
 ---
 
@@ -23,10 +177,14 @@ Orthevan resource production is increased by 10%.
 
 ---
 
-## 1.1 Standard Infantry
+## 1.1 Line Infantry Presentation
 
-**Unit type:** Standard line infantry  
-**Battlefield role:** General-purpose frontline rifleman  
+**Gameplay classification:** Orthevan visual presentation of the shared Line Infantry unit; not a separate gameplay definition
+
+**Presentation type:** Standard line infantry
+
+**Visual battlefield expression:** General-purpose frontline rifleman
+
 **Canon image:** `orthevan_standard_infantry_canon.png`
 
 ### Core concept
@@ -143,7 +301,10 @@ Nothing should appear scavenged, personalized, ceremonial, or improvised.
 ## 1.2 Vanguard Exosuit
 
 **Unit type:** Heavy mechanized infantry  
-**Battlefield role:** Frontline assault, fortified-position breach, hazardous-environment operations  
+**Primary function:** Frontline assault, fortified-position breach, and hazardous-environment operations
+
+**Unique role:** Elite Breaching Infantry
+
 **Canon image:** `orthevan_vanguard_exosuit_canon.png`
 
 ### Lore role
@@ -159,6 +320,8 @@ Typical missions include:
 - Holding narrow defensive corridors.
 - Heavy frontline assault.
 - Fighting in hazardous environments.
+
+These missions are the unit's approved battlefield roles.
 
 ### Approved visual direction
 
@@ -178,11 +341,11 @@ The canon design is a clearly heavier evolution of Orthevan infantry equipment.
 
 The suit must look expensive and powerful while remaining something the Directorate could manufacture, maintain, repair, and deploy systematically.
 
-### Visual relationship to Standard Infantry
+### Visual relationship to the Line Infantry presentation
 
 The Vanguard should look like it belongs to the same military design family:
 
-**Standard Infantry → enlarged armour architecture → powered joints → heavier weapon → greater environmental protection.**
+**Line Infantry presentation → enlarged armour architecture → powered joints → heavier weapon → greater environmental protection.**
 
 It is elite equipment, but visually still Directorate-standardized rather than individually customized.
 
@@ -191,7 +354,10 @@ It is elite equipment, but visually still Directorate-standardized rather than i
 ## 1.3 Siege Strider
 
 **Unit type:** Heavy walking weapons platform  
-**Battlefield role:** Mobile heavy support and fortified-position destruction  
+**Primary function:** Mobile heavy support and fortified-position destruction
+
+**Unique role:** Heavy Siege Platform
+
 **Canon image:** `orthevan_siege_strider_canon.png`
 
 ### Lore role
@@ -257,10 +423,14 @@ Zhyreth units are produced 10% faster.
 
 ---
 
-## 2.1 Standard Infantry
+## 2.1 Line Infantry Presentation
 
-**Unit type:** Standard biological infantry  
-**Battlefield role:** General-purpose frontline combat organism  
+**Gameplay classification:** Zhyreth visual presentation of the shared Line Infantry unit; not a separate gameplay definition
+
+**Presentation type:** Standard biological infantry
+
+**Visual battlefield expression:** General-purpose frontline combat organism
+
 **Canon image:** `zhyreth_standard_infantry_v1_canon.png`
 
 ### Approved visual direction
@@ -293,7 +463,10 @@ Its body, protection, weapon, and support structures should appear to have **gro
 ## 2.2 Razor Beast
 
 **Unit type:** Biological assault organism  
-**Battlefield role:** Rapid close-range line breaker  
+**Primary function:** Rapid close-range line breaking
+
+**Unique role:** Rapid Shock Assault
+
 **Canon image:** `zhyreth_razor_beast_v1_canon.png`
 
 ### Lore role
@@ -314,6 +487,12 @@ Their job is simple:
 **Close the distance before enemy firepower can stop them and tear open the line.**
 
 They are best used when the Brood needs a defensive position broken quickly.
+
+### Battlefield roles
+
+- Close the distance before enemy firepower can stop them.
+- Tear open enemy lines at close range.
+- Break defensive positions quickly.
 
 ### Approved visual direction
 
@@ -338,7 +517,10 @@ Its silhouette should immediately communicate **speed + mass + cutting power**.
 ## 2.3 Spore Caster
 
 **Unit type:** Living artillery organism  
-**Battlefield role:** Biological ranged support and battlefield-area disruption  
+**Primary function:** Biological ranged support and battlefield-area disruption
+
+**Unique role:** Battlefield Control and Disruption
+
 **Canon image:** `zhyreth_spore_caster_v1_canon.png`
 
 ### Lore role
@@ -353,6 +535,8 @@ Depending on battlefield requirements, biological projectiles may:
 - Interfere with exposed equipment.
 - Contaminate terrain.
 - Force enemies away from important positions.
+
+These effects are the unit's approved battlefield roles.
 
 The Spore Caster is therefore both artillery and a biological battlefield-control organism.
 
@@ -391,10 +575,14 @@ Nhalorin units gain 10% increased armor.
 
 ---
 
-## 3.1 Standard Infantry
+## 3.1 Line Infantry Presentation
 
-**Unit type:** Standard combat construct  
-**Battlefield role:** General-purpose line combat platform  
+**Gameplay classification:** Nhalorin visual presentation of the shared Line Infantry unit; not a separate gameplay definition
+
+**Presentation type:** Standard combat construct
+
+**Visual battlefield expression:** General-purpose line combat platform
+
 **Canon image:** `nhalorin_standard_infantry_v1_canon.png`
 
 ### Approved visual direction
@@ -434,7 +622,10 @@ It should not look rusty, damaged, improvised, or skeletal merely to communicate
 ## 3.2 Aegis Construct
 
 **Unit type:** Heavy defensive combat construct  
-**Battlefield role:** Hold critical ground and absorb sustained attack  
+**Primary function:** Hold critical ground and absorb sustained attack
+
+**Unique role:** Defensive Anchor
+
 **Canon image:** `nhalorin_aegis_construct_v1_canon.png`
 
 ### Lore role
@@ -451,6 +642,8 @@ Typical assignments include defense of:
 - Strategic energy nodes.
 - Command structures.
 - Critical infrastructure.
+
+These assignments, together with absorbing sustained attack, are the unit's approved battlefield roles.
 
 They are slow but exceptionally difficult to remove.
 
@@ -477,7 +670,10 @@ It should read as a **walking defensive emplacement** rather than a fast assault
 ## 3.3 Phase Reaper
 
 **Unit type:** Advanced ranged combat construct  
-**Battlefield role:** Precision anti-armour / high-value-target eliminator  
+**Primary function:** Precision anti-armour and high-value-target elimination
+
+**Unique role:** Premium Anti-Armour Specialist
+
 **Canon image:** `nhalorin_phase_reaper_v1_canon.png`
 
 ### Lore role
@@ -494,6 +690,12 @@ The system demands:
 - Carefully regulated deployment.
 
 Phase Reapers are rarer than conventional Continuum constructs.
+
+### Battlefield roles
+
+- Eliminate armored targets with precision phase technology.
+- Eliminate exposed high-value targets.
+- Make conventional protection temporarily irrelevant through spatial instability.
 
 ### Approved visual direction
 
@@ -539,10 +741,14 @@ Draskyr units deal 10% increased damage.
 
 ---
 
-## 4.1 Standard Infantry
+## 4.1 Line Infantry Presentation
 
-**Unit type:** Standard clan infantry  
-**Battlefield role:** General-purpose aggressive frontline fighter  
+**Gameplay classification:** Draskyr visual presentation of the shared Line Infantry unit; not a separate gameplay definition
+
+**Presentation type:** Standard clan infantry
+
+**Visual battlefield expression:** General-purpose aggressive frontline fighter
+
 **Canon image:** `draskyr_standard_infantry_canon.png`
 
 ### Approved visual direction
@@ -576,7 +782,10 @@ Everything needs to work.
 ## 4.2 Scrap Brute
 
 **Unit type:** Heavy assault warrior  
-**Battlefield role:** Close-range breakthrough and line-breaking assault  
+**Primary function:** Close-range breakthrough and line-breaking assault
+
+**Unique role:** Heavy Close-Range Shock Assault
+
 **Canon image:** `draskyr_scrap_brute_canon.png`
 
 ### Lore role
@@ -588,6 +797,8 @@ There is no single standardized Scrap Brute suit.
 The role is:
 
 **Get close. Break the line. Survive long enough for everyone else to follow.**
+
+These three imperatives are the unit's approved battlefield roles.
 
 Possible weapons include:
 
@@ -621,7 +832,10 @@ The unit should feel like a **walking accumulation of victories, repairs, stolen
 ## 4.3 Rift Raider
 
 **Unit type:** Fast assault specialist  
-**Battlefield role:** Flanking, boarding, rapid penetration, and vulnerable-target elimination  
+**Primary function:** Flanking, boarding, rapid penetration, and vulnerable-target elimination
+
+**Unique role:** Fast Deep-Strike / Support Hunter
+
 **Canon image:** `draskyr_rift_raider_canon.png`
 
 ### Lore role
@@ -636,6 +850,8 @@ Typical targets include:
 - Command units.
 - Damaged vehicles.
 - Exposed high-value targets.
+
+These targets, together with flanking, boarding, and rapid penetration, define the unit's approved battlefield roles.
 
 Their equipment may use compact propulsion systems, gravitic boosters, or other mobility systems modified by Forge-Takers.
 
@@ -658,14 +874,50 @@ Its silhouette should communicate **speed, violence, and improvised mobility**.
 
 ---
 
-# 5. LOCKED UNIT ROSTER
+# 5. LOCKED PLANETARY UNIT ROSTER
 
-| Faction | Standard Unit | Unique Unit 1 | Unique Unit 2 |
-|---|---|---|---|
-| **Orthevan Directorate** | Standard Infantry | Vanguard Exosuit | Siege Strider |
-| **Zhyreth Brood** | Standard Infantry | Razor Beast | Spore Caster |
-| **Nhalorin Continuum** | Standard Infantry | Aegis Construct | Phase Reaper |
-| **Draskyr Clans** | Standard Infantry | Scrap Brute | Rift Raider |
+## General planetary units
+
+Every faction has access to these same seven gameplay definitions, in this canonical order:
+
+1. Line Infantry
+2. Assault Infantry
+3. Heavy Weapons Infantry
+4. Light Tank
+5. Heavy Tank
+6. Field Artillery
+7. Combat Engineer
+
+## Faction-unique planetary units
+
+### Orthevan Directorate
+
+- Vanguard Exosuit — Elite Breaching Infantry
+- Siege Strider — Heavy Siege Platform
+
+### Zhyreth Brood
+
+- Razor Beast — Rapid Shock Assault
+- Spore Caster — Battlefield Control and Disruption
+
+### Nhalorin Continuum
+
+- Aegis Construct — Defensive Anchor
+- Phase Reaper — Premium Anti-Armour Specialist
+
+### Draskyr Clans
+
+- Scrap Brute — Heavy Close-Range Shock Assault
+- Rift Raider — Fast Deep-Strike / Support Hunter
+
+## Canonical totals
+
+- 7 shared general unit definitions.
+- 8 faction-unique unit definitions.
+- 15 global planetary unit definitions.
+- 9 available planetary units per faction: 7 shared general units followed by that faction's 2 unique units.
+
+The four faction-specific Line Infantry presentation sections describe visual and presentation implementations of one shared gameplay definition. They are not four additional units and are not included separately in these totals.
 
 ---
 
@@ -724,6 +976,8 @@ Mismatched components, salvage, exposed mechanics, trophies, repairs, individual
 The following are **not yet defined in this document** and should not be treated as locked:
 
 - Numerical unit stats.
+- Numerical combat values.
+- Numerical balance values.
 - Build costs.
 - Production times.
 - Research prerequisites.
@@ -740,4 +994,4 @@ Those systems should be added only when they are deliberately designed and appro
 
 ---
 
-**Current ground-unit design set: COMPLETE — 12/12 canon units established.**
+**Current planetary gameplay-unit roster: COMPLETE — 15 definitions established: 7 shared general definitions and 8 faction-unique definitions, with 9 available units per faction.**

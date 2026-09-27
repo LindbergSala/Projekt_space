@@ -866,6 +866,27 @@ creation, and runtime database access remain pending.
   database. Production rules, public spending controls, capacity, production,
   timers, and player-controlled Materials mutation UI remain unimplemented.
 
+### Planetary Unit Codex — 2026-09-27
+
+- The canonical planetary gameplay roster now contains seven shared general
+  unit definitions and two unique definitions for each of four factions:
+  fifteen definitions globally and nine available definitions per faction.
+  The former faction-specific Standard Infantry concepts remain canon as four
+  visual presentations of the shared Line Infantry definition, not separate
+  gameplay units.
+- `lib/planetary-units.js` provides immutable, ordered, machine-readable unit
+  and faction definitions without environment, session, Prisma, or database
+  access. It defines descriptive roles only: numerical statistics, combat and
+  balance values, costs, production times, ownership, quantities, recruitment,
+  production, and faction selection remain absent.
+- Authenticated Server Components at `/units` and `/units/[factionKey]` expose
+  the complete read-only reference content. Unknown faction keys return 404,
+  unauthenticated requests use the established `/login` redirect, and the
+  planet detail page contains one link to the codex.
+- Verification for this checkpoint is repository-only. No Prisma command,
+  schema change, migration, database access, Neon or Vercel access, production
+  operation, deployment, or gameplay-state mutation is part of this slice.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

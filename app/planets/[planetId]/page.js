@@ -74,9 +74,14 @@ export default async function PlanetPage({ params }) {
           </button>
         </form>
 
-        <Link className="secondary-link planet-back-link" href="/planets">
-          Back to planets
-        </Link>
+        <nav className="planet-navigation" aria-label="Planet navigation">
+          <Link className="secondary-link" href="/units">
+            Planetary Unit Codex
+          </Link>
+          <Link className="secondary-link planet-back-link" href="/planets">
+            Back to planets
+          </Link>
+        </nav>
       </section>
     </main>
   );

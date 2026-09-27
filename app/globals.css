@@ -443,6 +443,162 @@ button:disabled {
   margin-top: 1.25rem;
 }
 
+.planet-navigation {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.planet-navigation .secondary-link,
+.planet-navigation .planet-back-link {
+  width: 100%;
+  margin-top: 0;
+}
+
+.codex-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1rem;
+  overflow-x: hidden;
+}
+
+.codex-shell {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+}
+
+.codex-header,
+.codex-section {
+  border: 1px solid #29496c;
+  border-radius: 0.9rem;
+  background: rgb(8 24 42 / 92%);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 18%);
+  padding: clamp(1.25rem, 5vw, 2rem);
+}
+
+.codex-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 10vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.codex-header > p:not(.eyebrow),
+.codex-section-heading p {
+  margin: 0.8rem 0 0;
+  max-width: 48rem;
+  font-size: 1rem;
+}
+
+.codex-section {
+  margin-top: 1rem;
+}
+
+.codex-section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 7vw, 2rem);
+  line-height: 1.15;
+}
+
+.unit-grid,
+.faction-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.unit-card,
+.faction-card {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-radius: 0.7rem;
+  background: #0b1b2d;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.unit-card-heading h3,
+.faction-card h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.unit-category,
+.faction-unique-label {
+  margin: 0 0 0.35rem;
+  color: #8dbce8;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.unit-summary {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 0;
+}
+
+.unit-summary dt {
+  color: #8dbce8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.unit-summary dd {
+  margin: 0.35rem 0 0;
+  color: #d9e5f2;
+  line-height: 1.55;
+}
+
+.unit-role-list,
+.faction-card ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.unit-role-list li::marker,
+.faction-card li::marker {
+  color: #8dbce8;
+}
+
+.faction-card > p:not(.faction-unique-label) {
+  margin: 0.65rem 0 0;
+  font-size: 0.95rem;
+}
+
+.faction-unique-label {
+  margin-top: 1rem;
+}
+
+.faction-card ul {
+  margin-top: 0.5rem;
+  color: #d9e5f2;
+  line-height: 1.5;
+}
+
+.faction-roster-link {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.codex-navigation {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.codex-navigation .secondary-link {
+  width: 100%;
+}
+
 @media (min-width: 48rem) {
   .home {
     padding: 3rem;
@@ -450,5 +606,18 @@ button:disabled {
 
   .auth-page {
     padding: 2rem;
+  }
+
+  .codex-page {
+    padding: 2rem;
+  }
+
+  .unit-grid,
+  .faction-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .codex-navigation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
