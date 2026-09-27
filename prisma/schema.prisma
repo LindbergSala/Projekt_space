@@ -73,12 +73,25 @@ model Verification {
 }
 
 model Planet {
-  id        String @id
-  name      String @default("Unnamed Planet") @db.VarChar(40)
-  materials BigInt @default(0) @db.BigInt
-  ownerId   String
-  owner     User   @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  id                   String                      @id
+  name                 String                      @default("Unnamed Planet") @db.VarChar(40)
+  materials            BigInt                      @default(0) @db.BigInt
+  ownerId              String
+  owner                User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  materialTransactions PlanetMaterialTransaction[]
 
   @@index([ownerId])
   @@map("planet")
+}
+
+model PlanetMaterialTransaction {
+  id           String   @id
+  planetId     String
+  delta        BigInt   @db.BigInt
+  balanceAfter BigInt   @db.BigInt
+  createdAt    DateTime @default(now())
+  planet       Planet   @relation(fields: [planetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([planetId, createdAt, id], map: "planet_material_history_idx")
+  @@map("planet_material_transaction")
 }

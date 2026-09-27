@@ -76,6 +76,7 @@ test("Materials is serialized exactly and never selected by the planet list", as
           id: "planet-owned",
           name: "Owned Planet",
           materials: LARGE_MATERIALS,
+          materialTransactions: [],
         }
       },
     },
@@ -83,12 +84,29 @@ test("Materials is serialized exactly and never selected by the planet list", as
 
   assert.deepEqual(detailQuery, {
     where: { id: "planet-owned", ownerId: "authenticated-owner" },
-    select: { id: true, name: true, materials: true },
+    select: {
+      id: true,
+      name: true,
+      materials: true,
+      materialTransactions: {
+        select: {
+          delta: true,
+          balanceAfter: true,
+          createdAt: true,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 20,
+      },
+    },
   })
   assert.deepEqual(planet, {
     id: "planet-owned",
     name: "Owned Planet",
     materials: "9007199254740993",
+    materialHistory: [],
   })
 
   const listFunction = query.match(
@@ -219,6 +237,7 @@ test("local PostgreSQL enforces defaults, precision, ownership, and rename prese
         id: planetId,
         name: "Unnamed Planet",
         materials: "9007199254740993",
+        materialHistory: [],
       },
     )
     assert.equal(

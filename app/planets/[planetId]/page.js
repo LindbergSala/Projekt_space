@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { getAuthenticatedUserPlanetById } from "../../../lib/owned-planets.js";
 import { renamePlanetAction } from "../actions.js";
 
+function signedDelta(delta) {
+  return delta.startsWith("-") ? delta : `+${delta}`;
+}
+
 export default async function PlanetPage({ params }) {
   const { planetId } = await params;
   const planet = await getAuthenticatedUserPlanetById(planetId);
@@ -31,6 +35,28 @@ export default async function PlanetPage({ params }) {
               <dd>{planet.materials}</dd>
             </div>
           </dl>
+        </section>
+
+        <section
+          className="material-history"
+          aria-labelledby="material-history-title"
+        >
+          <h2 id="material-history-title">Materials history</h2>
+          {planet.materialHistory.length === 0 ? (
+            <p className="material-history-empty">No material changes yet.</p>
+          ) : (
+            <ol>
+              {planet.materialHistory.map((entry, index) => (
+                <li key={`${entry.createdAt}-${index}`}>
+                  <div className="material-history-heading">
+                    <strong>{signedDelta(entry.delta)}</strong>
+                    <time dateTime={entry.createdAt}>{entry.createdAt}</time>
+                  </div>
+                  <p>Balance: {entry.balanceAfter}</p>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
 
         <form action={renamePlanetAction} className="planet-rename-form">

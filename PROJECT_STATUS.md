@@ -853,6 +853,19 @@ creation, and runtime database access remain pending.
   implemented. Materials is read-only on the owner-protected planet detail
   page.
 
+### Atomic Materials transactions — 2026-09-27
+
+- Each successful Materials change is applied atomically and recorded in an
+  immutable per-planet ledger by a server-only, owner-protected operation.
+  Versioned SHA-256 operation identities make trusted gameplay retries
+  idempotent, while PostgreSQL row locks serialize concurrent planet changes.
+- Balances and ledger values remain exact PostgreSQL `BIGINT` values and cross
+  the data boundary only as decimal strings. The latest owner-protected history
+  is read-only on the planet detail page.
+- This checkpoint was verified only against the isolated local development
+  database. Production rules, public spending controls, capacity, production,
+  timers, and player-controlled Materials mutation UI remain unimplemented.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

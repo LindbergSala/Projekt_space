@@ -63,6 +63,7 @@ test("owned planet detail query selects only ID, name, and exact Materials", asy
           id: "planet-owned",
           name: "Owned Planet",
           materials: 9_007_199_254_740_993n,
+          materialTransactions: [],
         }
       },
     },
@@ -77,12 +78,25 @@ test("owned planet detail query selects only ID, name, and exact Materials", asy
       id: true,
       name: true,
       materials: true,
+      materialTransactions: {
+        select: {
+          delta: true,
+          balanceAfter: true,
+          createdAt: true,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 20,
+      },
     },
   })
   assert.deepEqual(planet, {
     id: "planet-owned",
     name: "Owned Planet",
     materials: "9007199254740993",
+    materialHistory: [],
   })
 })
 
@@ -131,11 +145,13 @@ test("planet detail page awaits params and hides missing or foreign planets", as
   assert.match(page, /<p className="planet-id">\{planet\.id\}<\/p>/u)
   assert.match(page, /<dt>Materials<\/dt>/u)
   assert.match(page, /<dd>\{planet\.materials\}<\/dd>/u)
+  assert.match(page, />Materials history<\/h2>/u)
+  assert.match(page, />No material changes yet\.<\/p>/u)
   assert.match(page, /href="\/planets"/u)
   assert.match(page, />\s*Back to planets\s*<\/Link>/u)
   assert.doesNotMatch(
     page,
-    /ownerId|userId|create|update|upsert|delete|console\./u,
+    /ownerId|userId|\b(?:create|update|upsert|delete)\b|console\./u,
   )
 })
 
@@ -191,7 +207,12 @@ test("local detail queries isolate owners and roll back all synthetic data", asy
             ownerId: firstOwnerId,
             planetModel: transaction.planet,
           }),
-          { id: firstPlanetId, name: "Unnamed Planet", materials: "0" },
+          {
+            id: firstPlanetId,
+            name: "Unnamed Planet",
+            materials: "0",
+            materialHistory: [],
+          },
         )
         assert.equal(
           await queryOwnedPlanetById({
