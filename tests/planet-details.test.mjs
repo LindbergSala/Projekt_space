@@ -51,7 +51,7 @@ test("authenticated detail operation derives owner identity on the server", asyn
   )
 })
 
-test("owned planet detail query combines ID and owner while selecting only name and ID", async () => {
+test("owned planet detail query selects only ID, name, and exact Materials", async () => {
   let receivedQuery
   const planet = await queryOwnedPlanetById({
     planetId: "planet-owned",
@@ -59,7 +59,11 @@ test("owned planet detail query combines ID and owner while selecting only name 
     planetModel: {
       async findFirst(query) {
         receivedQuery = query
-        return { id: "planet-owned", name: "Owned Planet" }
+        return {
+          id: "planet-owned",
+          name: "Owned Planet",
+          materials: 9_007_199_254_740_993n,
+        }
       },
     },
   })
@@ -72,9 +76,14 @@ test("owned planet detail query combines ID and owner while selecting only name 
     select: {
       id: true,
       name: true,
+      materials: true,
     },
   })
-  assert.deepEqual(planet, { id: "planet-owned", name: "Owned Planet" })
+  assert.deepEqual(planet, {
+    id: "planet-owned",
+    name: "Owned Planet",
+    materials: "9007199254740993",
+  })
 })
 
 test("invalid planet IDs return null without querying the database", async () => {
@@ -120,6 +129,8 @@ test("planet detail page awaits params and hides missing or foreign planets", as
   assert.match(page, /if \(planet === null\) \{\s*notFound\(\)/u)
   assert.match(page, /<h1 id="planet-title">\{planet\.name\}<\/h1>/u)
   assert.match(page, /<p className="planet-id">\{planet\.id\}<\/p>/u)
+  assert.match(page, /<dt>Materials<\/dt>/u)
+  assert.match(page, /<dd>\{planet\.materials\}<\/dd>/u)
   assert.match(page, /href="\/planets"/u)
   assert.match(page, />\s*Back to planets\s*<\/Link>/u)
   assert.doesNotMatch(
@@ -180,7 +191,7 @@ test("local detail queries isolate owners and roll back all synthetic data", asy
             ownerId: firstOwnerId,
             planetModel: transaction.planet,
           }),
-          { id: firstPlanetId, name: "Unnamed Planet" },
+          { id: firstPlanetId, name: "Unnamed Planet", materials: "0" },
         )
         assert.equal(
           await queryOwnedPlanetById({

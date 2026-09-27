@@ -845,6 +845,14 @@ creation, and runtime database access remain pending.
   reassessed again once client generation, migrations, or runtime database
   access are implemented.
 
+### Planet Materials canon — 2026-09-27
+
+- `Materials` is the first planet-owned resource. New and existing planets
+  start with `0`, and PostgreSQL rejects negative values.
+- No maximum capacity, production, spending, or time model has been decided or
+  implemented. Materials is read-only on the owner-protected planet detail
+  page.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

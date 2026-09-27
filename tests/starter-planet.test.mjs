@@ -228,9 +228,9 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
     assert.deepEqual(
       await prisma.planet.findUnique({
         where: { id: newPlanetId },
-        select: { id: true, name: true },
+        select: { id: true, name: true, materials: true },
       }),
-      { id: newPlanetId, name: "Unnamed Planet" },
+      { id: newPlanetId, name: "Unnamed Planet", materials: 0n },
     )
 
     const concurrentIds = await Promise.all(

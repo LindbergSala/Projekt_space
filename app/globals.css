@@ -325,6 +325,42 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.planet-resources {
+  margin-top: 1.6rem;
+}
+
+.planet-resources h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.planet-resources dl {
+  margin: 0.75rem 0 0;
+}
+
+.planet-resources dl > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #29496c;
+  border-radius: 0.55rem;
+  background: #0b1b2d;
+  padding: 0.85rem;
+}
+
+.planet-resources dt {
+  color: #8dbce8;
+  font-weight: 700;
+}
+
+.planet-resources dd {
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  overflow-wrap: anywhere;
+}
+
 .planet-rename-form {
   display: grid;
   gap: 0.75rem;

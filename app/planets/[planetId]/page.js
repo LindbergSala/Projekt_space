@@ -23,6 +23,16 @@ export default async function PlanetPage({ params }) {
           <p className="planet-id">{planet.id}</p>
         </div>
 
+        <section className="planet-resources" aria-labelledby="resources-title">
+          <h2 id="resources-title">Resources</h2>
+          <dl>
+            <div>
+              <dt>Materials</dt>
+              <dd>{planet.materials}</dd>
+            </div>
+          </dl>
+        </section>
+
         <form action={renamePlanetAction} className="planet-rename-form">
           <input name="planetId" type="hidden" value={planet.id} />
           <label htmlFor="planet-name">Planet name</label>

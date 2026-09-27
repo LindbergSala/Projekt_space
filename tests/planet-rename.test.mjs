@@ -271,9 +271,9 @@ test("local rename is owner-scoped, defaults names, and rolls back all data", as
         assert.deepEqual(
           await transaction.planet.findUnique({
             where: { id: ownedPlanetId },
-            select: { id: true, name: true },
+            select: { id: true, name: true, materials: true },
           }),
-          { id: ownedPlanetId, name: "Unnamed Planet" },
+          { id: ownedPlanetId, name: "Unnamed Planet", materials: 0n },
         )
 
         assert.deepEqual(
@@ -287,7 +287,12 @@ test("local rename is owner-scoped, defaults names, and rolls back all data", as
         )
         assert.equal(
           await transaction.planet.count({
-            where: { id: ownedPlanetId, ownerId, name: "Polaris Station" },
+            where: {
+              id: ownedPlanetId,
+              ownerId,
+              name: "Polaris Station",
+              materials: 0n,
+            },
           }),
           1,
         )
