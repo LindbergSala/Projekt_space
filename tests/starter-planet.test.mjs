@@ -22,14 +22,11 @@ async function source(relativePath) {
   return readFile(path.join(ROOT_DIRECTORY, relativePath), "utf8")
 }
 
-function createMemoryPlanetModel() {
+function createMemoryPrismaClient({ factionKey = "orthevan-directorate" } = {}) {
   const planets = new Map()
   let createCount = 0
 
-  return {
-    get createCount() {
-      return createCount
-    },
+  const planet = {
     async findFirst({ where, select, orderBy }) {
       assert.deepEqual(select, { id: true, ownerId: true })
       assert.deepEqual(orderBy, { id: "asc" })
@@ -49,6 +46,18 @@ function createMemoryPlanetModel() {
       createCount += 1
       planets.set(create.id, { ...create })
       return planets.get(create.id)
+    },
+  }
+
+  return {
+    get createCount() {
+      return createCount
+    },
+    async $transaction(run) {
+      return run({
+        $queryRaw: async () => [{ factionKey }],
+        planet,
+      })
     },
   }
 }
@@ -84,32 +93,39 @@ test("starter planet ID is deterministic, opaque, and domain-versioned", async (
 })
 
 test("a missing planet is created once and repeated calls return it", async () => {
-  const planetModel = createMemoryPlanetModel()
+  const prismaClient = createMemoryPrismaClient()
   const ownerId = "authenticated-owner"
 
-  const firstId = await ensureStarterPlanetForOwner({ ownerId, planetModel })
-  const secondId = await ensureStarterPlanetForOwner({ ownerId, planetModel })
+  const firstId = await ensureStarterPlanetForOwner({ ownerId, prismaClient })
+  const secondId = await ensureStarterPlanetForOwner({ ownerId, prismaClient })
 
   assert.equal(firstId, createStarterPlanetId(ownerId))
   assert.equal(secondId, firstId)
-  assert.equal(planetModel.createCount, 1)
+  assert.equal(prismaClient.createCount, 1)
 })
 
 test("the deterministic first existing planet prevents starter creation", async () => {
   let upsertCalled = false
   const planetId = await ensureStarterPlanetForOwner({
     ownerId: "authenticated-owner",
-    planetModel: {
-      async findFirst(query) {
-        assert.deepEqual(query, {
-          where: { ownerId: "authenticated-owner" },
-          select: { id: true, ownerId: true },
-          orderBy: { id: "asc" },
+    prismaClient: {
+      async $transaction(run) {
+        return run({
+          $queryRaw: async () => [{ factionKey: "orthevan-directorate" }],
+          planet: {
+            async findFirst(query) {
+              assert.deepEqual(query, {
+                where: { ownerId: "authenticated-owner" },
+                select: { id: true, ownerId: true },
+                orderBy: { id: "asc" },
+              })
+              return { id: "planet-a", ownerId: "authenticated-owner" }
+            },
+            async upsert() {
+              upsertCalled = true
+            },
+          },
         })
-        return { id: "planet-a", ownerId: "authenticated-owner" }
-      },
-      async upsert() {
-        upsertCalled = true
       },
     },
   })
@@ -122,12 +138,19 @@ test("ownership verification fails closed with a generic error", async () => {
   await assert.rejects(
     ensureStarterPlanetForOwner({
       ownerId: "authenticated-owner",
-      planetModel: {
-        async findFirst() {
-          return null
-        },
-        async upsert() {
-          return { id: "colliding-planet", ownerId: "another-owner" }
+      prismaClient: {
+        async $transaction(run) {
+          return run({
+            $queryRaw: async () => [{ factionKey: "orthevan-directorate" }],
+            planet: {
+              async findFirst() {
+                return null
+              },
+              async upsert() {
+                return { id: "colliding-planet", ownerId: "another-owner" }
+              },
+            },
+          })
         },
       },
     }),
@@ -157,7 +180,7 @@ test("planet rendering is read-only and mutation requires the empty-state form",
   assert.ok(establishAction)
   assert.doesNotMatch(
     establishAction,
-    /ownerId|userId|formData|FormData|searchParams|params|cookies|localStorage|sessionStorage/u,
+    /userId|formData|FormData|searchParams|params|cookies|localStorage|sessionStorage/u,
   )
 })
 
@@ -203,6 +226,7 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
         id,
         name: "Starter Planet Probe",
         email: `${id}@example.invalid`,
+        factionKey: "orthevan-directorate",
       })),
     })
     await prisma.planet.createMany({
@@ -215,12 +239,12 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
 
     const newPlanetId = await ensureStarterPlanetForOwner({
       ownerId: newOwnerId,
-      planetModel: prisma.planet,
+      prismaClient: prisma,
     })
     assert.equal(
       await ensureStarterPlanetForOwner({
         ownerId: newOwnerId,
-        planetModel: prisma.planet,
+        prismaClient: prisma,
       }),
       newPlanetId,
     )
@@ -237,7 +261,7 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
       Array.from({ length: 8 }, () =>
         ensureStarterPlanetForOwner({
           ownerId: concurrentOwnerId,
-          planetModel: prisma.planet,
+          prismaClient: prisma,
         }),
       ),
     )
@@ -252,7 +276,7 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
     assert.equal(
       await ensureStarterPlanetForOwner({
         ownerId: existingOwnerId,
-        planetModel: prisma.planet,
+        prismaClient: prisma,
       }),
       existingPlanetIds[1],
     )
@@ -264,7 +288,7 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
     await assert.rejects(
       ensureStarterPlanetForOwner({
         ownerId: collisionOwnerId,
-        planetModel: prisma.planet,
+        prismaClient: prisma,
       }),
       { message: OWNERSHIP_ERROR },
     )

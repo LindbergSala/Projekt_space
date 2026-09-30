@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import LogoutButton from "./logout-button.js";
+import { getAuthenticatedFaction } from "../../lib/authenticated-faction.js";
 import { requireAuthenticatedUser } from "../../lib/auth-session.js";
 
 export const metadata = {
@@ -9,6 +10,7 @@ export const metadata = {
 
 export default async function AccountPage() {
   const user = await requireAuthenticatedUser();
+  const faction = await getAuthenticatedFaction();
 
   return (
     <main className="auth-page">
@@ -29,9 +31,32 @@ export default async function AccountPage() {
           </div>
         </dl>
 
-        <Link className="secondary-link account-navigation" href="/planets">
-          View planets
-        </Link>
+        <section className="account-civilization" aria-labelledby="civilization-title">
+          <h2 id="civilization-title">Civilization</h2>
+          {faction === null ? (
+            <>
+              <p>Faction not selected</p>
+              <Link className="primary-link" href="/faction">
+                Choose faction
+              </Link>
+            </>
+          ) : (
+            <>
+              <p>{faction.name}</p>
+              <nav className="civilization-navigation" aria-label="Civilization navigation">
+                <Link className="secondary-link" href={`/units/${faction.key}`}>
+                  View faction roster
+                </Link>
+                <Link className="secondary-link" href="/planets">
+                  View planets
+                </Link>
+                <Link className="danger-link" href="/civilization/reset">
+                  Reset civilization
+                </Link>
+              </nav>
+            </>
+          )}
+        </section>
 
         <LogoutButton />
       </section>

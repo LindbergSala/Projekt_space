@@ -887,6 +887,32 @@ creation, and runtime database access remain pending.
   schema change, migration, database access, Neon or Vercel access, production
   operation, deployment, or gameplay-state mutation is part of this slice.
 
+### Account-wide faction lifecycle — 2026-09-30
+
+- `User.factionKey` now stores the nullable account-wide faction selection as
+  `VARCHAR(32)`. PostgreSQL permits only `orthevan-directorate`,
+  `zhyreth-brood`, `nhalorin-continuum`, `draskyr-clans`, or null, matching the
+  immutable planetary-unit registry. Selection is permanent during the active
+  civilization, same-value retries are idempotent, and user-row locking makes
+  concurrent different selections resolve to exactly one faction.
+- `/faction` is the authenticated selection and current-faction page. Planet
+  list/detail reads, starter creation, rename, and Materials mutation now
+  require a selected faction server-side. `/account` remains available and
+  shows the civilization state, while `/units` and faction roster pages remain
+  accessible before selection for comparison.
+- `/civilization/reset` requires the exact case-sensitive confirmation phrase
+  `RESET CIVILIZATION`. One transaction locks the authenticated User, deletes
+  that user's `PlanetMaterialTransaction` rows before owned `Planet` rows, and
+  clears `User.factionKey`. The User identity, Better Auth Account and Session
+  rows, password credentials, email/login, and ability to choose a new faction
+  are preserved. Starter creation locks the same User row, preventing reset
+  from leaving a planet owned by a factionless civilization.
+- The lifecycle introduces no faction bonuses, numerical statistics,
+  production, owned units, buildings, or combat rules. Verification was
+  limited to the isolated local PostgreSQL development database and repository
+  checks; no Neon, Vercel, Preview, Production, deployment, environment-file,
+  commit, or push operation was performed.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

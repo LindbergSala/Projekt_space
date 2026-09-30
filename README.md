@@ -1,9 +1,9 @@
 # Projekt_space
 
-Projekt_space is the application foundation for a persistent multiplayer
-sci-fi strategy game built with Next.js and JavaScript. PostgreSQL and Prisma
-are part of the confirmed stack, but this foundation does not require a
-database connection yet.
+Projekt_space is a persistent multiplayer sci-fi strategy game built with
+Next.js, JavaScript, PostgreSQL, and Prisma. The current local gameplay slice
+includes account-wide faction selection, owned planets, planet naming,
+Materials balances and an immutable Materials ledger.
 
 ## Requirements
 
@@ -514,5 +514,22 @@ performed.
 Google credentials and provider resources, email verification delivery,
 password-reset delivery, explicit account-linking UX, automated browser
 end-to-end verification, linking tests, OAuth tests, deployment, and gameplay
-remain pending. The local email/password flow is usable, but authentication is
-not production-ready or complete.
+outside the bounded local slices remain pending. The local email/password flow
+is usable, but authentication is not production-ready or complete.
+
+## Account-wide faction lifecycle
+
+Authenticated players can compare the four canonical faction rosters under
+`/units` before choosing a faction at `/faction`. The selected faction belongs
+to the account and gates planetary gameplay under `/planets`. It cannot be
+changed directly while the civilization exists.
+
+`/account` shows the current faction state and links to faction selection,
+planetary gameplay, the selected nine-unit roster, and the destructive reset
+flow as appropriate. `/civilization/reset` requires the exact phrase
+`RESET CIVILIZATION`. A successful reset atomically deletes the account's
+planet Materials history before its planets and clears `User.factionKey`.
+The Better Auth User, Account, Session, credentials, and login capability are
+preserved, after which any faction may be selected for a fresh civilization.
+No faction bonuses, numerical statistics, unit ownership, production, or
+combat behavior are implemented by this lifecycle.

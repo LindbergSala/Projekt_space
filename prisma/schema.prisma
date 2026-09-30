@@ -15,6 +15,7 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  factionKey    String?   @db.VarChar(32)
   sessions      Session[]
   accounts      Account[]
   ownedPlanets  Planet[]

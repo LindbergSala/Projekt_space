@@ -85,8 +85,10 @@ input {
 
 .primary-link,
 .secondary-link,
+.danger-link,
 .primary-button,
-.secondary-button {
+.secondary-button,
+.danger-button {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
@@ -117,6 +119,37 @@ input {
   border-color: #527294;
   background: #10233a;
   color: #e5f1ff;
+}
+
+.danger-link,
+.danger-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ff9f9f;
+  border-radius: 0.55rem;
+  background: #35151b;
+  color: #fff1f1;
+  padding: 0.7rem 1rem;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.danger-link::before,
+.danger-button::before {
+  content: "Warning: ";
+  margin-right: 0.25rem;
+}
+
+.danger-link:hover,
+.danger-button:hover {
+  border-color: #ffd0d0;
+  background: #4c1b24;
+  color: #ffffff;
 }
 
 .secondary-link:hover,
@@ -255,6 +288,101 @@ button:disabled {
 .account-navigation {
   width: 100%;
   margin-top: 1.25rem;
+}
+
+.account-civilization {
+  margin-top: 1.6rem;
+  border-top: 1px solid #29496c;
+  padding-top: 1.25rem;
+}
+
+.account-civilization h2,
+.reset-warning h2,
+.reset-preserved h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.account-civilization > p {
+  margin: 0.65rem 0 1rem;
+  font-size: 1rem;
+}
+
+.account-civilization > .primary-link {
+  width: 100%;
+}
+
+.civilization-navigation,
+.faction-choice-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.civilization-navigation {
+  margin-top: 1.25rem;
+}
+
+.civilization-navigation > a,
+.faction-choice-actions a,
+.faction-choice-actions form {
+  width: 100%;
+}
+
+.faction-choice-actions {
+  margin-top: 1rem;
+}
+
+.faction-choice-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.faction-choice-card .faction-choice-actions {
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.reset-card {
+  width: min(100%, 34rem);
+}
+
+.reset-warning,
+.reset-preserved {
+  margin-top: 1.25rem;
+  border: 1px solid #527294;
+  border-radius: 0.6rem;
+  padding: 1rem;
+}
+
+.reset-warning {
+  border-width: 2px;
+  border-color: #ff9f9f;
+  background: #28141a;
+}
+
+.reset-warning ul,
+.reset-preserved ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  color: #d9e5f2;
+  line-height: 1.5;
+}
+
+.reset-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.reset-form .danger-button,
+.reset-cancel-link {
+  width: 100%;
+}
+
+.reset-cancel-link {
+  margin-top: 1rem;
 }
 
 .logout-action {
