@@ -44,6 +44,34 @@ export default async function PlanetPage({ params }) {
         </section>
 
         <section
+          className="unit-history"
+          aria-labelledby="unit-history-title"
+        >
+          <h2 id="unit-history-title">Planetary force history</h2>
+          {planet.unitHistory.length === 0 ? (
+            <p className="unit-history-empty">
+              No planetary force changes yet.
+            </p>
+          ) : (
+            <ol>
+              {planet.unitHistory.map((entry, index) => (
+                <li key={`${entry.createdAt}-${entry.unitKey}-${index}`}>
+                  <div className="unit-history-heading">
+                    <strong>{entry.unitName}</strong>
+                    <time dateTime={entry.createdAt}>{entry.createdAt}</time>
+                  </div>
+                  <p>
+                    <span>{signedDelta(entry.delta)}</span>
+                    {" · "}
+                    Resulting quantity: {entry.quantityAfter}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section
           className="planetary-forces"
           aria-labelledby="planetary-forces-title"
         >

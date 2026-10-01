@@ -295,6 +295,7 @@ test("detail history selects no identifiers and serializes exact values", async 
   const planet = await queryOwnedPlanetById({
     planetId: "planet-owned",
     ownerId: "authenticated-owner",
+    factionKey: "orthevan-directorate",
     planetModel: {
       async findFirst(query) {
         receivedQuery = query
@@ -307,6 +308,7 @@ test("detail history selects no identifiers and serializes exact values", async 
             balanceAfter: 9_007_199_254_740_994n,
             createdAt,
           }],
+          unitTransactions: [],
         }
       },
     },
@@ -330,6 +332,7 @@ test("detail history selects no identifiers and serializes exact values", async 
       balanceAfter: "9007199254740994",
       createdAt: "2026-09-27T06:00:00.000Z",
     }],
+    unitHistory: [],
   })
   assert.equal(JSON.stringify(planet).includes("transactionId"), false)
   assert.equal(JSON.stringify(planet).includes("ownerId"), false)
@@ -348,6 +351,7 @@ test("local transactions are atomic, idempotent, precise, and owner-protected", 
       await queryOwnedPlanetById({
         planetId,
         ownerId,
+        factionKey: "orthevan-directorate",
         planetModel: prisma.planet,
       }),
       {
@@ -355,6 +359,7 @@ test("local transactions are atomic, idempotent, precise, and owner-protected", 
         name: "Unnamed Planet",
         materials: "0",
         materialHistory: [],
+        unitHistory: [],
       },
     )
 
@@ -645,6 +650,7 @@ test("history is owner-protected, deterministic, limited, and read-only in UI", 
     const owned = await queryOwnedPlanetById({
       planetId,
       ownerId,
+      factionKey: "orthevan-directorate",
       planetModel: prisma.planet,
     })
     assert.deepEqual(owned.materialHistory, expected)
@@ -653,6 +659,7 @@ test("history is owner-protected, deterministic, limited, and read-only in UI", 
       await queryOwnedPlanetById({
         planetId: otherPlanetId,
         ownerId,
+        factionKey: "orthevan-directorate",
         planetModel: prisma.planet,
       }),
       null,

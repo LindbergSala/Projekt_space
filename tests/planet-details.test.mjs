@@ -56,6 +56,7 @@ test("owned planet detail query selects only ID, name, and exact Materials", asy
   const planet = await queryOwnedPlanetById({
     planetId: "planet-owned",
     ownerId: "authenticated-owner",
+    factionKey: "orthevan-directorate",
     planetModel: {
       async findFirst(query) {
         receivedQuery = query
@@ -64,6 +65,7 @@ test("owned planet detail query selects only ID, name, and exact Materials", asy
           name: "Owned Planet",
           materials: 9_007_199_254_740_993n,
           materialTransactions: [],
+          unitTransactions: [],
         }
       },
     },
@@ -90,6 +92,19 @@ test("owned planet detail query selects only ID, name, and exact Materials", asy
         ],
         take: 20,
       },
+      unitTransactions: {
+        select: {
+          unitKey: true,
+          delta: true,
+          quantityAfter: true,
+          createdAt: true,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 20,
+      },
     },
   })
   assert.deepEqual(planet, {
@@ -97,6 +112,7 @@ test("owned planet detail query selects only ID, name, and exact Materials", asy
     name: "Owned Planet",
     materials: "9007199254740993",
     materialHistory: [],
+    unitHistory: [],
   })
 })
 
@@ -124,6 +140,7 @@ test("invalid planet IDs return null without querying the database", async () =>
       await queryOwnedPlanetById({
         planetId,
         ownerId: "authenticated-owner",
+        factionKey: "orthevan-directorate",
         planetModel,
       }),
       null,
@@ -209,6 +226,7 @@ test("local detail queries isolate owners and roll back all synthetic data", asy
           await queryOwnedPlanetById({
             planetId: firstPlanetId,
             ownerId: firstOwnerId,
+            factionKey: "orthevan-directorate",
             planetModel: transaction.planet,
           }),
           {
@@ -216,12 +234,14 @@ test("local detail queries isolate owners and roll back all synthetic data", asy
             name: "Unnamed Planet",
             materials: "0",
             materialHistory: [],
+            unitHistory: [],
           },
         )
         assert.equal(
           await queryOwnedPlanetById({
             planetId: secondPlanetId,
             ownerId: firstOwnerId,
+            factionKey: "orthevan-directorate",
             planetModel: transaction.planet,
           }),
           null,
@@ -230,6 +250,7 @@ test("local detail queries isolate owners and roll back all synthetic data", asy
           await queryOwnedPlanetById({
             planetId: `planet-detail-unknown-${testId}`,
             ownerId: firstOwnerId,
+            factionKey: "orthevan-directorate",
             planetModel: transaction.planet,
           }),
           null,

@@ -69,6 +69,7 @@ test("Materials is serialized exactly and never selected by the planet list", as
   const planet = await queryOwnedPlanetById({
     planetId: "planet-owned",
     ownerId: "authenticated-owner",
+    factionKey: "orthevan-directorate",
     planetModel: {
       async findFirst(receivedQuery) {
         detailQuery = receivedQuery
@@ -77,6 +78,7 @@ test("Materials is serialized exactly and never selected by the planet list", as
           name: "Owned Planet",
           materials: LARGE_MATERIALS,
           materialTransactions: [],
+          unitTransactions: [],
         }
       },
     },
@@ -100,6 +102,19 @@ test("Materials is serialized exactly and never selected by the planet list", as
         ],
         take: 20,
       },
+      unitTransactions: {
+        select: {
+          unitKey: true,
+          delta: true,
+          quantityAfter: true,
+          createdAt: true,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 20,
+      },
     },
   })
   assert.deepEqual(planet, {
@@ -107,6 +122,7 @@ test("Materials is serialized exactly and never selected by the planet list", as
     name: "Owned Planet",
     materials: "9007199254740993",
     materialHistory: [],
+    unitHistory: [],
   })
 
   const listFunction = query.match(
@@ -231,6 +247,7 @@ test("local PostgreSQL enforces defaults, precision, ownership, and rename prese
       await queryOwnedPlanetById({
         planetId,
         ownerId,
+        factionKey: "orthevan-directorate",
         planetModel: prisma.planet,
       }),
       {
@@ -238,12 +255,14 @@ test("local PostgreSQL enforces defaults, precision, ownership, and rename prese
         name: "Unnamed Planet",
         materials: "9007199254740993",
         materialHistory: [],
+        unitHistory: [],
       },
     )
     assert.equal(
       await queryOwnedPlanetById({
         planetId: otherPlanetId,
         ownerId,
+        factionKey: "orthevan-directorate",
         planetModel: prisma.planet,
       }),
       null,

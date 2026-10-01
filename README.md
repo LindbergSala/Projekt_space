@@ -3,7 +3,8 @@
 Projekt_space is a persistent multiplayer sci-fi strategy game built with
 Next.js, JavaScript, PostgreSQL, and Prisma. The current local gameplay slice
 includes account-wide faction selection, owned planets, planet naming,
-Materials balances and an immutable Materials ledger.
+Materials balances, planetary ground-force quantities, and immutable
+per-planet transaction histories for both.
 
 ## Requirements
 
@@ -528,8 +529,8 @@ changed directly while the civilization exists.
 planetary gameplay, the selected nine-unit roster, and the destructive reset
 flow as appropriate. `/civilization/reset` requires the exact phrase
 `RESET CIVILIZATION`. A successful reset atomically deletes the account's
-planetary unit stacks and Materials history before its planets, then clears
-`User.factionKey`.
+planetary ground-force history, unit stacks, and Materials history before its
+planets, then clears `User.factionKey`.
 The Better Auth User, Account, Session, credentials, and login capability are
 preserved, after which any faction may be selected for a fresh civilization.
 No faction bonuses, numerical unit statistics, production, or combat behavior
@@ -544,3 +545,18 @@ detail page derives the player's stored faction on the server and renders its
 seven general plus two unique units in canonical order with exact decimal
 quantities. This interface is read-only; unit production, costs, timing,
 transport, and combat remain unimplemented.
+
+## Atomic planetary unit transactions
+
+Trusted server code can apply a signed `BIGINT` quantity change through an
+owner- and faction-protected operation. The operation locks the authenticated
+User and owned Planet, updates the stack, and appends an immutable
+`PlanetUnitTransaction` row in one database transaction. Versioned SHA-256
+operation identities make exact retries idempotent and reject reuse for a
+different planet, unit, or delta. Quantities and history values cross the
+application boundary only as decimal strings.
+
+The owner-protected planet detail page displays the latest 20 ground-force
+changes in deterministic order. This history is read-only. No route, Server
+Action, or player control currently calls the mutation operation; production,
+recruitment, costs, timing, queues, transport, and combat remain unimplemented.

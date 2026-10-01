@@ -35,6 +35,7 @@ const TABLE_DELEGATES = [
   ["Planet", "planet"],
   ["PlanetMaterialTransaction", "planetMaterialTransaction"],
   ["PlanetUnitStack", "planetUnitStack"],
+  ["PlanetUnitTransaction", "planetUnitTransaction"],
 ]
 
 async function source(relativePath) {
@@ -444,6 +445,7 @@ test("local database constraints, reads, reset isolation, and cleanup are exact"
     assert.equal(await prisma.account.count({ where: { id: accountId } }), 1)
     assert.equal(await prisma.session.count({ where: { id: sessionId } }), 1)
     assert.deepEqual(CIVILIZATION_RESET_SCOPE.deleted, [
+      "PlanetUnitTransaction",
       "PlanetUnitStack",
       "PlanetMaterialTransaction",
       "Planet",
@@ -460,6 +462,9 @@ test("local database constraints, reads, reset isolation, and cleanup are exact"
       select: { id: true },
     }).catch(() => [])
     const remainingPlanetIds = remainingPlanets.map(({ id }) => id)
+    await prisma.planetUnitTransaction.deleteMany({
+      where: { planetId: { in: remainingPlanetIds } },
+    }).catch(() => {})
     await prisma.planetUnitStack.deleteMany({
       where: { planetId: { in: remainingPlanetIds } },
     }).catch(() => {})

@@ -446,6 +446,31 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
         { planetId: rollbackPlanetId, unitKey: "line-infantry", quantity: 3n },
       ],
     })
+    await prisma.planetUnitTransaction.createMany({
+      data: [
+        {
+          id: `reset-unit-ledger-${testId}`,
+          planetId,
+          unitKey: "line-infantry",
+          delta: 8n,
+          quantityAfter: 8n,
+        },
+        {
+          id: `reset-other-unit-ledger-${testId}`,
+          planetId: otherPlanetId,
+          unitKey: "line-infantry",
+          delta: 5n,
+          quantityAfter: 5n,
+        },
+        {
+          id: `reset-rollback-unit-ledger-${testId}`,
+          planetId: rollbackPlanetId,
+          unitKey: "line-infantry",
+          delta: 3n,
+          quantityAfter: 3n,
+        },
+      ],
+    })
 
     for (const confirmation of ["reset civilization", `${RESET_CIVILIZATION_CONFIRMATION} `]) {
       await assert.rejects(
@@ -456,6 +481,7 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
     assert.equal(await prisma.planet.count({ where: { ownerId } }), 1)
     assert.equal(await prisma.planetMaterialTransaction.count({ where: { planetId } }), 1)
     assert.equal(await prisma.planetUnitStack.count({ where: { planetId } }), 1)
+    assert.equal(await prisma.planetUnitTransaction.count({ where: { planetId } }), 1)
 
     await resetCivilizationForUser({
       userId: ownerId,
@@ -464,6 +490,7 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
     })
     assert.equal(await prisma.planetMaterialTransaction.count({ where: { planetId } }), 0)
     assert.equal(await prisma.planetUnitStack.count({ where: { planetId } }), 0)
+    assert.equal(await prisma.planetUnitTransaction.count({ where: { planetId } }), 0)
     assert.equal(await prisma.planet.count({ where: { ownerId } }), 0)
     assert.equal((await prisma.user.findUnique({ where: { id: ownerId } })).factionKey, null)
     assert.equal(await prisma.account.count({ where: { id: accountId, userId: ownerId } }), 1)
@@ -478,6 +505,10 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
     assert.equal(await prisma.planet.count({ where: { id: otherPlanetId } }), 1)
     assert.equal(await prisma.planetMaterialTransaction.count({ where: { planetId: otherPlanetId } }), 1)
     assert.equal(await prisma.planetUnitStack.count({ where: { planetId: otherPlanetId } }), 1)
+    assert.equal(
+      await prisma.planetUnitTransaction.count({ where: { planetId: otherPlanetId } }),
+      1,
+    )
     assert.equal(
       (await prisma.user.findUnique({ where: { id: otherOwnerId } })).factionKey,
       FACTION_KEYS[1],
@@ -494,6 +525,11 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
       async $transaction(run) {
         return prisma.$transaction(async (transaction) => run({
           $queryRaw: (...args) => transaction.$queryRaw(...args),
+          planetUnitTransaction: {
+            deleteMany: transaction.planetUnitTransaction.deleteMany.bind(
+              transaction.planetUnitTransaction,
+            ),
+          },
           planetUnitStack: {
             deleteMany: transaction.planetUnitStack.deleteMany.bind(
               transaction.planetUnitStack,
@@ -534,6 +570,10 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
       await prisma.planetUnitStack.count({ where: { planetId: rollbackPlanetId } }),
       1,
     )
+    assert.equal(
+      await prisma.planetUnitTransaction.count({ where: { planetId: rollbackPlanetId } }),
+      1,
+    )
     assert.notEqual(
       (await prisma.user.findUnique({ where: { id: rollbackOwnerId } })).factionKey,
       null,
@@ -569,6 +609,9 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
       where: { ownerId: { in: ownerIds } },
       select: { id: true },
     }).catch(() => [])
+    await prisma.planetUnitTransaction.deleteMany({
+      where: { planetId: { in: planets.map((planet) => planet.id) } },
+    }).catch(() => {})
     await prisma.planetUnitStack.deleteMany({
       where: { planetId: { in: planets.map((planet) => planet.id) } },
     }).catch(() => {})

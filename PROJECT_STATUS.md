@@ -938,6 +938,41 @@ creation, and runtime database access remain pending.
   upkeep, transport, combat, and starting armies remain undecided and
   unimplemented.
 
+### Atomic planetary unit transactions — 2026-10-01
+
+- A server-only, owner-protected operation now applies one signed unit-quantity
+  delta and appends one immutable `PlanetUnitTransaction` row atomically. It
+  reads the authenticated account identity before entering the transaction,
+  then locks the User before the owned Planet so faction selection, reset, and
+  concurrent changes share a consistent lock order.
+- Faction eligibility comes from the locked User row and the canonical roster;
+  clients cannot supply ownership or faction authority. Missing stacks mean
+  zero. Stack and ledger values stay exact PostgreSQL `BIGINT` values,
+  nonnegative resulting quantities are enforced in policy and database
+  constraints, and application results contain only the planet key, unit key,
+  and decimal-string quantity.
+- A versioned SHA-256 digest of the exact trusted operation key is the ledger
+  primary key. An identical retry returns the recorded result without another
+  write; reuse with a different planet, unit, or delta returns one fixed
+  conflict error. User and Planet row locks serialize distinct concurrent
+  operations, and either both stack and ledger writes commit or both roll back.
+  Raw operation keys are neither stored nor returned.
+- The owner-protected planet detail query selects only unit key, delta,
+  resulting quantity, and creation time from the latest 20 ledger rows, ordered
+  by creation time and ID descending. It resolves canonical display names,
+  serializes exact values as strings, and fails closed with the established
+  generic planetary-force read error for corrupt or cross-faction data. The
+  mobile-first history section is read-only and exposes no identifiers or
+  mutation controls.
+- Civilization reset deletes the authenticated owner's unit-history rows before
+  stacks, Materials history, and planets in its existing user-locked
+  transaction. Authentication data remains preserved, other owners remain
+  isolated, and reset serializes safely with an in-flight unit transaction.
+- No route, Server Action, or UI currently invokes the mutation operation.
+  Production, recruitment, costs, timing, queues, capacity, upkeep, transport,
+  combat, starting armies, background-event processing, and deployment remain
+  outside this checkpoint.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

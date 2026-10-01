@@ -29,6 +29,7 @@ export default async function ResetCivilizationPage({ searchParams }) {
             <li>All Materials balances</li>
             <li>All Materials transaction history</li>
             <li>All planetary ground-force quantities</li>
+            <li>All planetary ground-force history</li>
             <li>All current gameplay progress</li>
           </ul>
         </section>

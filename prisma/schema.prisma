@@ -81,6 +81,7 @@ model Planet {
   owner                User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   materialTransactions PlanetMaterialTransaction[]
   unitStacks           PlanetUnitStack[]
+  unitTransactions     PlanetUnitTransaction[]
 
   @@index([ownerId])
   @@map("planet")
@@ -94,6 +95,19 @@ model PlanetUnitStack {
 
   @@id([planetId, unitKey], map: "planet_unit_stack_pkey")
   @@map("planet_unit_stack")
+}
+
+model PlanetUnitTransaction {
+  id            String   @id
+  planetId      String
+  unitKey       String   @db.VarChar(32)
+  delta         BigInt   @db.BigInt
+  quantityAfter BigInt   @db.BigInt
+  createdAt     DateTime @default(now())
+  planet        Planet   @relation(fields: [planetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([planetId, createdAt, id], map: "planet_unit_history_idx")
+  @@map("planet_unit_transaction")
 }
 
 model PlanetMaterialTransaction {
