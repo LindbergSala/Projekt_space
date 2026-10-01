@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getAuthenticatedUserPlanetById } from "../../../lib/owned-planets.js";
+import {
+  getAuthenticatedPlanetaryForces,
+  getAuthenticatedUserPlanetById,
+} from "../../../lib/owned-planets.js";
 import { renamePlanetAction } from "../actions.js";
 
 function signedDelta(delta) {
@@ -10,9 +13,12 @@ function signedDelta(delta) {
 
 export default async function PlanetPage({ params }) {
   const { planetId } = await params;
-  const planet = await getAuthenticatedUserPlanetById(planetId);
+  const [planet, forces] = await Promise.all([
+    getAuthenticatedUserPlanetById(planetId),
+    getAuthenticatedPlanetaryForces(planetId),
+  ]);
 
-  if (planet === null) {
+  if (planet === null || forces === null) {
     notFound();
   }
 
@@ -35,6 +41,31 @@ export default async function PlanetPage({ params }) {
               <dd>{planet.materials}</dd>
             </div>
           </dl>
+        </section>
+
+        <section
+          className="planetary-forces"
+          aria-labelledby="planetary-forces-title"
+        >
+          <div className="planetary-forces-heading">
+            <h2 id="planetary-forces-title">Planetary forces</h2>
+            <Link href={`/units/${encodeURIComponent(forces.faction.key)}`}>
+              {forces.faction.name} Unit Codex
+            </Link>
+          </div>
+          <ul>
+            {forces.units.map((unit) => (
+              <li key={unit.key}>
+                <div>
+                  <h3>{unit.name}</h3>
+                  <p>{unit.category}</p>
+                </div>
+                <span aria-label={`${unit.name} quantity`}>
+                  {unit.quantity}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section
@@ -75,9 +106,6 @@ export default async function PlanetPage({ params }) {
         </form>
 
         <nav className="planet-navigation" aria-label="Planet navigation">
-          <Link className="secondary-link" href="/units">
-            Planetary Unit Codex
-          </Link>
           <Link className="secondary-link planet-back-link" href="/planets">
             Back to planets
           </Link>

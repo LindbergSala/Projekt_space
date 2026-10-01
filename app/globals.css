@@ -489,6 +489,77 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.planetary-forces {
+  margin-top: 1.6rem;
+  min-width: 0;
+}
+
+.planetary-forces-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.planetary-forces-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.planetary-forces-heading a {
+  color: #8bc5ff;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.planetary-forces ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planetary-forces li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #29496c;
+  border-radius: 0.55rem;
+  background: #0b1b2d;
+  padding: 0.85rem;
+}
+
+.planetary-forces li > div {
+  min-width: 0;
+}
+
+.planetary-forces h3 {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.planetary-forces li p {
+  margin: 0.25rem 0 0;
+  color: #8dbce8;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.planetary-forces li span {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: #e5f1ff;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .material-history {
   margin-top: 1.6rem;
 }

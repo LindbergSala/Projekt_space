@@ -913,6 +913,31 @@ creation, and runtime database access remain pending.
   checks; no Neon, Vercel, Preview, Production, deployment, environment-file,
   commit, or push operation was performed.
 
+### Per-planet planetary forces — 2026-09-30
+
+- Ground-force quantities are stored per planet in `PlanetUnitStack`, keyed by
+  the composite `planetId + unitKey` identity. Quantities are exact,
+  nonnegative PostgreSQL `BIGINT` values, and PostgreSQL constrains unit keys to
+  the fifteen canonical registry definitions. A missing row means quantity
+  `0`; the migration creates no rows and does not backfill existing planets.
+- The server-only force read derives ownership from the verified Better Auth
+  session and faction from the stored civilization state. Its planet query is
+  protected by `id + ownerId`, selects only the planet ID and stack key/value
+  pairs, and returns the canonical nine-unit faction roster in deterministic
+  order with decimal-string quantities. Unknown or cross-faction stack data
+  fails closed with a generic error.
+- The owner-protected planet detail page now presents those nine units as a
+  read-only, mobile-first list and links to the selected faction's codex.
+  Rendering creates no stack rows and exposes no controls for changing unit
+  quantities. Starter planets likewise receive no fabricated force rows.
+- Civilization reset now deletes the authenticated user's unit stacks before
+  deleting their planets, in the same atomic user-locked transaction as the
+  Materials-ledger cleanup and faction clear. Other users' stacks and all
+  preserved authentication data remain outside that deletion scope.
+- Unit production, recruitment, costs, production times and queues, capacity,
+  upkeep, transport, combat, and starting armies remain undecided and
+  unimplemented.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

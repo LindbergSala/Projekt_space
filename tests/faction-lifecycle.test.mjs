@@ -250,7 +250,7 @@ test("pages, actions, account navigation, and gameplay gates expose no browser i
 
   assert.equal(
     (operation.match(/requireFactionForAuthenticatedUserId\(ownerId\)/gu) ?? []).length,
-    5,
+    6,
   )
   assert.match(factionOperation, /redirect\("\/faction"\)/u)
   assert.match(factionOperation, /const userId = await requireAuthenticatedUserId\(\)/u)
@@ -439,6 +439,13 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
         { id: `reset-rollback-ledger-${testId}`, planetId: rollbackPlanetId, delta: 3n, balanceAfter: 3n },
       ],
     })
+    await prisma.planetUnitStack.createMany({
+      data: [
+        { planetId, unitKey: "line-infantry", quantity: 8n },
+        { planetId: otherPlanetId, unitKey: "line-infantry", quantity: 5n },
+        { planetId: rollbackPlanetId, unitKey: "line-infantry", quantity: 3n },
+      ],
+    })
 
     for (const confirmation of ["reset civilization", `${RESET_CIVILIZATION_CONFIRMATION} `]) {
       await assert.rejects(
@@ -448,6 +455,7 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
     }
     assert.equal(await prisma.planet.count({ where: { ownerId } }), 1)
     assert.equal(await prisma.planetMaterialTransaction.count({ where: { planetId } }), 1)
+    assert.equal(await prisma.planetUnitStack.count({ where: { planetId } }), 1)
 
     await resetCivilizationForUser({
       userId: ownerId,
@@ -455,6 +463,7 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
       prismaClient: prisma,
     })
     assert.equal(await prisma.planetMaterialTransaction.count({ where: { planetId } }), 0)
+    assert.equal(await prisma.planetUnitStack.count({ where: { planetId } }), 0)
     assert.equal(await prisma.planet.count({ where: { ownerId } }), 0)
     assert.equal((await prisma.user.findUnique({ where: { id: ownerId } })).factionKey, null)
     assert.equal(await prisma.account.count({ where: { id: accountId, userId: ownerId } }), 1)
@@ -468,6 +477,7 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
 
     assert.equal(await prisma.planet.count({ where: { id: otherPlanetId } }), 1)
     assert.equal(await prisma.planetMaterialTransaction.count({ where: { planetId: otherPlanetId } }), 1)
+    assert.equal(await prisma.planetUnitStack.count({ where: { planetId: otherPlanetId } }), 1)
     assert.equal(
       (await prisma.user.findUnique({ where: { id: otherOwnerId } })).factionKey,
       FACTION_KEYS[1],
@@ -484,6 +494,11 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
       async $transaction(run) {
         return prisma.$transaction(async (transaction) => run({
           $queryRaw: (...args) => transaction.$queryRaw(...args),
+          planetUnitStack: {
+            deleteMany: transaction.planetUnitStack.deleteMany.bind(
+              transaction.planetUnitStack,
+            ),
+          },
           planetMaterialTransaction: {
             deleteMany: transaction.planetMaterialTransaction.deleteMany.bind(
               transaction.planetMaterialTransaction,
@@ -513,6 +528,10 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
     assert.equal(await prisma.planet.count({ where: { id: rollbackPlanetId } }), 1)
     assert.equal(
       await prisma.planetMaterialTransaction.count({ where: { planetId: rollbackPlanetId } }),
+      1,
+    )
+    assert.equal(
+      await prisma.planetUnitStack.count({ where: { planetId: rollbackPlanetId } }),
       1,
     )
     assert.notEqual(
@@ -550,6 +569,9 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
       where: { ownerId: { in: ownerIds } },
       select: { id: true },
     }).catch(() => [])
+    await prisma.planetUnitStack.deleteMany({
+      where: { planetId: { in: planets.map((planet) => planet.id) } },
+    }).catch(() => {})
     await prisma.planetMaterialTransaction.deleteMany({
       where: { planetId: { in: planets.map((planet) => planet.id) } },
     }).catch(() => {})

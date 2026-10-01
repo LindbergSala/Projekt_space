@@ -256,6 +256,10 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
       }),
       { id: newPlanetId, name: "Unnamed Planet", materials: 0n },
     )
+    assert.equal(
+      await prisma.planetUnitStack.count({ where: { planetId: newPlanetId } }),
+      0,
+    )
 
     const concurrentIds = await Promise.all(
       Array.from({ length: 8 }, () =>
@@ -304,6 +308,13 @@ test("local database creation is idempotent, concurrent, isolated, and cleaned u
       2,
     )
   } finally {
+    const planets = await prisma.planet.findMany({
+      where: { ownerId: { in: ownerIds } },
+      select: { id: true },
+    })
+    await prisma.planetUnitStack.deleteMany({
+      where: { planetId: { in: planets.map((planet) => planet.id) } },
+    })
     await prisma.planet.deleteMany({ where: { ownerId: { in: ownerIds } } })
     await prisma.user.deleteMany({ where: { id: { in: ownerIds } } })
 

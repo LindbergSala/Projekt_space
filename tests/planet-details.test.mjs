@@ -139,8 +139,12 @@ test("planet detail page awaits params and hides missing or foreign planets", as
 
   assert.doesNotMatch(page, /^["']use client["']/mu)
   assert.match(page, /const \{ planetId \} = await params/u)
-  assert.match(page, /await getAuthenticatedUserPlanetById\(planetId\)/u)
-  assert.match(page, /if \(planet === null\) \{\s*notFound\(\)/u)
+  assert.match(page, /getAuthenticatedUserPlanetById\(planetId\)/u)
+  assert.match(page, /getAuthenticatedPlanetaryForces\(planetId\)/u)
+  assert.match(
+    page,
+    /if \(planet === null \|\| forces === null\) \{\s*notFound\(\)/u,
+  )
   assert.match(page, /<h1 id="planet-title">\{planet\.name\}<\/h1>/u)
   assert.match(page, /<p className="planet-id">\{planet\.id\}<\/p>/u)
   assert.match(page, /<dt>Materials<\/dt>/u)

@@ -80,9 +80,20 @@ model Planet {
   ownerId              String
   owner                User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   materialTransactions PlanetMaterialTransaction[]
+  unitStacks           PlanetUnitStack[]
 
   @@index([ownerId])
   @@map("planet")
+}
+
+model PlanetUnitStack {
+  planetId String
+  unitKey  String @db.VarChar(32)
+  quantity BigInt @default(0) @db.BigInt
+  planet   Planet @relation(fields: [planetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([planetId, unitKey], map: "planet_unit_stack_pkey")
+  @@map("planet_unit_stack")
 }
 
 model PlanetMaterialTransaction {

@@ -203,8 +203,8 @@ Fail-fast checks reject incompatible main, migration, or shadow targets without
 including any URL in the error.
 
 `prisma/schema.prisma` defines a `prisma-client-js` generator, a PostgreSQL
-datasource, and the minimum Better Auth models. It has no gameplay models,
-enums, or seed data:
+datasource, the Better Auth models, and the current planet gameplay models.
+There are no Prisma enums or seed data:
 
 ```prisma
 generator client {
@@ -528,8 +528,19 @@ changed directly while the civilization exists.
 planetary gameplay, the selected nine-unit roster, and the destructive reset
 flow as appropriate. `/civilization/reset` requires the exact phrase
 `RESET CIVILIZATION`. A successful reset atomically deletes the account's
-planet Materials history before its planets and clears `User.factionKey`.
+planetary unit stacks and Materials history before its planets, then clears
+`User.factionKey`.
 The Better Auth User, Account, Session, credentials, and login capability are
 preserved, after which any faction may be selected for a fresh civilization.
-No faction bonuses, numerical statistics, unit ownership, production, or
-combat behavior are implemented by this lifecycle.
+No faction bonuses, numerical unit statistics, production, or combat behavior
+are implemented by this lifecycle.
+
+## Per-planet planetary forces
+
+Each planet can store nonnegative `BIGINT` quantities for canonical planetary
+units in `PlanetUnitStack`. Missing rows represent quantity zero, so migrations
+and starter-planet creation do not fabricate armies. The owner-protected planet
+detail page derives the player's stored faction on the server and renders its
+seven general plus two unique units in canonical order with exact decimal
+quantities. This interface is read-only; unit production, costs, timing,
+transport, and combat remain unimplemented.
