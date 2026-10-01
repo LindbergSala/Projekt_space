@@ -13,10 +13,13 @@ The canonical public entry is:
 https://projekt-space.vercel.app
 ```
 
-The root route `/` is the player-state router. It renders the public entry for
-signed-out visitors and sends authenticated players to faction selection,
-planet establishment, or the Civilization Command Center according to their
-persisted state.
+The root route `/` is the player-state router. It renders a complete,
+server-rendered public landing page for signed-out visitors and sends
+authenticated players to faction selection, planet establishment, or the
+Civilization Command Center according to their persisted state. The landing
+page presents the currently available read-only foundation separately from its
+clearly labelled planned strategy horizon, and its faction showcase reads from
+the canonical planetary registry.
 
 ## Requirements
 
@@ -506,8 +509,9 @@ headers to `auth.api.getSession`, redirects unauthenticated requests to
 `/login`, and renders only the authenticated user's name and email. Its small
 client logout control signs out through Better Auth, returns to `/login`, and
 refreshes server state. Successful login and registration return through `/`,
-where the server resolves the next player step. The signed-out root page links
-to login and registration without requiring client JavaScript.
+where the server resolves the next player step. The signed-out root page is a
+mobile-first public landing experience with login and registration links, a
+CSS-only planetary visual, and no client JavaScript or external assets.
 
 An HTTP rendering smoke check confirmed that signed-out `/account` redirects
 to `/login`, while `/login` and `/register` render their expected labels and

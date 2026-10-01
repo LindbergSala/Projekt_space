@@ -303,7 +303,10 @@ test("root is a dynamic Server Component with one server-side redirect authority
   const operation = await source("lib/authenticated-player-entry.js")
 
   assert.doesNotMatch(page, /^["']use client["']/mu)
-  assert.doesNotMatch(page, /useEffect|useRouter|window|document|localStorage|sessionStorage/u)
+  assert.doesNotMatch(
+    page,
+    /useEffect|useRouter|window|\bdocument\b|localStorage|sessionStorage/u,
+  )
   assert.doesNotMatch(page, /fetch\(|api\//u)
   assert.match(page, /export const dynamic = "force-dynamic"/u)
   assert.match(page, /export default async function Home\(\)/u)
@@ -313,12 +316,15 @@ test("root is a dynamic Server Component with one server-side redirect authority
   )
   assert.equal((page.match(/redirect\(destination\)/gu) ?? []).length, 1)
   assert.doesNotMatch(page, /try\s*\{|catch\s*[({]/u)
-  assert.match(page, />PROJECT_SPACE</u)
-  assert.match(page, />A persistent interstellar strategy game\.<\/p>/u)
-  assert.match(page, /Establish your faction, command planets, and build a civilization\./u)
-  assert.equal((page.match(/<Link /gu) ?? []).length, 2)
-  assert.match(page, /href="\/login">Log in<\/Link>/u)
-  assert.match(page, /href="\/register">Create account<\/Link>/u)
+  assert.match(page, /className="landing-page"/u)
+  assert.match(page, /getPlanetaryFactionSummaries\(\)/u)
+  assert.ok(
+    page.indexOf("redirect(destination)") <
+      page.indexOf("const factions = getPlanetaryFactionSummaries()"),
+  )
+  assert.ok(
+    page.indexOf("redirect(destination)") < page.indexOf("return ("),
+  )
 
   assert.match(operation, /^import "server-only"$/mu)
   assert.match(

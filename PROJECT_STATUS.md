@@ -1026,6 +1026,27 @@ creation, and runtime database access remain pending.
   or authentication state. Destination pages retain their independent current-
   state authorization boundaries.
 
+### Public landing page — 2026-10-01
+
+- Signed-out `/` now renders a polished, mobile-first Server Component with an
+  internal-anchor header, hero, three-step onboarding path, available-
+  foundation overview, faction showcase, planned strategy horizon, final call
+  to action, and semantic footer. Its orbital artwork is CSS-only and it loads
+  no external assets or client-side JavaScript.
+- The available section describes only the current owner-protected, read-only
+  faction, planet, Materials, planetary-force, Unit Codex, and Command Center
+  foundation. Production, spending, recruitment, construction, research,
+  fleets, transport, combat, conquest, and alliances are not presented as
+  currently playable; planned systems are isolated under an explicit planned
+  heading.
+- The four-faction showcase and all eight unique-unit names come directly from
+  the canonical planetary-unit registry. The landing page does not duplicate
+  those domain values or invent gameplay statistics.
+- The existing root entry state machine remains the sole routing authority and
+  still runs before public rendering: authenticated players go to `/faction`,
+  `/planets`, or `/civilization` from persisted owner state. This change adds no
+  schema, migration, database mutation, API route, or client authentication.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:
