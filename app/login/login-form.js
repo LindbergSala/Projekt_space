@@ -20,15 +20,21 @@ export default function LoginForm() {
     setIsPending(true);
 
     try {
-      const result = await authClient.signIn.email({ email, password });
+      const result = await authClient.signIn.email(
+        { email, password },
+        {
+          onSuccess() {
+            router.replace("/");
+            router.refresh();
+          },
+        },
+      );
 
       if (result.error) {
         setErrorMessage("Email or password is incorrect.");
         return;
       }
 
-      router.replace("/account");
-      router.refresh();
     } catch {
       setErrorMessage("Unable to log in right now. Please try again.");
     } finally {

@@ -33,15 +33,21 @@ export default function RegisterForm() {
     setIsPending(true);
 
     try {
-      const result = await authClient.signUp.email({ name, email, password });
+      const result = await authClient.signUp.email(
+        { name, email, password },
+        {
+          onSuccess() {
+            router.replace("/");
+            router.refresh();
+          },
+        },
+      );
 
       if (result.error) {
         setErrorMessage("Unable to create the account. Check your details and try again.");
         return;
       }
 
-      router.replace("/account");
-      router.refresh();
     } catch {
       setErrorMessage("Unable to create the account right now. Please try again.");
     } finally {

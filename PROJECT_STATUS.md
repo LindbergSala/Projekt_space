@@ -1006,6 +1006,26 @@ creation, and runtime database access remain pending.
   research, fleets, transport, combat, bonuses, capacity, timers, polling, or
   background processing.
 
+### Canonical player entry flow — 2026-10-01
+
+- `/` is the canonical, dynamically server-rendered player entry. Signed-out
+  visitors receive a focused public entry page with login and registration
+  links; that branch performs no gameplay-state database query.
+- The server resolves an optional Better Auth session to only its validated
+  User ID. Authenticated entry performs one owner-scoped query selecting only
+  the persisted faction key and existence of the first owned planet, validates
+  the faction against the canonical registry, and redirects factionless,
+  planetless, and established civilizations to `/faction`, `/planets`, and
+  `/civilization` respectively.
+- Successful email/password login and registration now return through `/`, so
+  the server-side root flow is the sole state-routing authority. No client-side
+  session polling, gameplay identity input, open redirect, or personalized
+  cache is involved.
+- The resolver is read-only: it does not select gameplay balances, units, or
+  histories and creates or changes no faction, planet, Materials, unit, ledger,
+  or authentication state. Destination pages retain their independent current-
+  state authorization boundaries.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

@@ -46,6 +46,15 @@ body {
   overflow-wrap: anywhere;
 }
 
+.intro > .eyebrow {
+  margin-bottom: 0.8rem;
+}
+
+.intro .entry-description {
+  margin-top: 0.65rem;
+  font-size: 1rem;
+}
+
 p {
   margin: 1.25rem auto 0;
   max-width: 34rem;
@@ -81,6 +90,11 @@ input {
   justify-content: center;
   gap: 0.75rem;
   margin-top: 2rem;
+}
+
+.auth-entry > a,
+.account-navigation > a {
+  width: 100%;
 }
 
 .primary-link,
@@ -1094,6 +1108,11 @@ button:disabled {
 @media (min-width: 48rem) {
   .home {
     padding: 3rem;
+  }
+
+  .auth-entry > a {
+    width: auto;
+    min-width: 10rem;
   }
 
   .auth-page {

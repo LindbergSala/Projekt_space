@@ -192,6 +192,8 @@ test("Next server adapter supplies Better Auth and awaited request headers", asy
   assert.match(adapter, /redirectUnauthenticated: redirect/)
   assert.match(adapter, /export function requireAuthenticatedUserId\(\)/)
   assert.match(adapter, /return resolveAuthenticatedUserId\(\{/)
+  assert.match(adapter, /export function getOptionalAuthenticatedUserId\(\)/)
+  assert.match(adapter, /return resolveOptionalAuthenticatedUserId\(\{/)
   assert.doesNotMatch(adapter, /cookie|token|console\./)
 })
 
@@ -221,6 +223,8 @@ test("login and logout controls use safe semantics without logging auth values",
   assert.match(login, /autoComplete="current-password"/)
   assert.match(login, /Email or password is incorrect\./)
   assert.match(login, /aria-live="polite"/)
+  assert.match(login, /onSuccess\(\) \{\s*router\.replace\("\/"\)/)
+  assert.doesNotMatch(login, /router\.replace\("\/account"\)/)
   assert.match(logout, /authClient\.signOut\(\)/)
   assert.match(logout, /router\.replace\("\/login"\)/)
   assert.match(logout, /router\.refresh\(\)/)

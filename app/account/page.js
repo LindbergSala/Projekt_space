@@ -61,6 +61,12 @@ export default async function AccountPage() {
           )}
         </section>
 
+        <nav className="account-navigation" aria-label="Game navigation">
+          <Link className="secondary-link" href="/">
+            Return to game
+          </Link>
+        </nav>
+
         <LogoutButton />
       </section>
     </main>

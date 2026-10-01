@@ -7,6 +7,17 @@ Materials balances, planetary ground-force quantities, and immutable
 per-planet transaction histories for both. The authenticated `/civilization`
 command center provides a read-only overview of this authoritative state.
 
+The canonical public entry is:
+
+```text
+https://projekt-space.vercel.app
+```
+
+The root route `/` is the player-state router. It renders the public entry for
+signed-out visitors and sends authenticated players to faction selection,
+planet establishment, or the Civilization Command Center according to their
+persisted state.
+
 ## Requirements
 
 - Node.js 24.x
@@ -494,7 +505,9 @@ cookies, sessions, or password storage directly.
 headers to `auth.api.getSession`, redirects unauthenticated requests to
 `/login`, and renders only the authenticated user's name and email. Its small
 client logout control signs out through Better Auth, returns to `/login`, and
-refreshes server state. The public home page links to login and registration.
+refreshes server state. Successful login and registration return through `/`,
+where the server resolves the next player step. The signed-out root page links
+to login and registration without requiring client JavaScript.
 
 An HTTP rendering smoke check confirmed that signed-out `/account` redirects
 to `/login`, while `/login` and `/register` render their expected labels and
