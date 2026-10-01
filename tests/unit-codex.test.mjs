@@ -82,7 +82,7 @@ test("planet detail links the selected faction codex without removing existing b
   )
   assert.match(page, /\{forces\.faction\.name\} Unit Codex/u)
   assert.match(page, /getAuthenticatedUserPlanetById\(planetId\)/u)
-  assert.match(page, />Materials<\/dt>/u)
+  assert.match(page, />Stored Materials<\/dt>/u)
   assert.match(page, />Materials history<\/h2>/u)
   assert.match(page, /action=\{renamePlanetAction\}/u)
   assert.match(page, /href="\/planets"/u)

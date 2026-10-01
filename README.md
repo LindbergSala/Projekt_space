@@ -4,8 +4,10 @@ Projekt_space is a persistent multiplayer sci-fi strategy game built with
 Next.js, JavaScript, PostgreSQL, and Prisma. The current local gameplay slice
 includes account-wide faction selection, owned planets, planet naming,
 Materials balances, planetary ground-force quantities, and immutable
-per-planet transaction histories for both. The authenticated `/civilization`
-command center provides a read-only overview of this authoritative state.
+per-planet transaction histories for both. Planets passively produce
+claimable Materials from authoritative database time. The authenticated
+`/civilization` command center provides an overview and bounded production
+claim controls for this authoritative state.
 
 The canonical public entry is:
 
@@ -551,8 +553,28 @@ planetary ground-force history, unit stacks, and Materials history before its
 planets, then clears `User.factionKey`.
 The Better Auth User, Account, Session, credentials, and login capability are
 preserved, after which any faction may be selected for a fresh civilization.
-No faction bonuses, numerical unit statistics, production, or combat behavior
-are implemented by this lifecycle.
+Apart from the Materials rate described below, no faction bonuses, numerical
+unit statistics, unit production, or combat behavior are implemented by this
+lifecycle.
+
+## Per-planet Materials production
+
+Every planet produces Materials passively from its persisted
+`materialsProductionCursor`. The base rate is `10` Materials per completed
+hour; the Orthevan Directorate produces `11`. Production stores at most 72
+completed hours per planet and has no Materials capacity. Sub-hour progress is
+preserved by ordinary claims. At or beyond the 72-hour limit, a claim awards
+exactly 72 hours and resets the cursor to current database time, discarding
+older over-cap time and partial progress.
+
+Status reads use PostgreSQL time and never change balances or cursors. Players
+claim explicitly from the owner-protected planet detail or Civilization
+Command Center. The server derives owner, faction, rate, elapsed time, delta,
+and balance; the browser submits only the planet ID. A claim locks the User and
+owned Planet in that order, updates the balance and cursor, and appends exactly
+one existing `PlanetMaterialTransaction` ledger row atomically. A claim with no
+completed hour is a no-op. No cron job, queue, polling loop, or background
+worker is involved.
 
 ## Per-planet planetary forces
 
@@ -582,13 +604,17 @@ recruitment, costs, timing, queues, transport, and combat remain unimplemented.
 ## Civilization Command Center
 
 Authenticated players with a selected faction can open `/civilization` for a
-read-only, mobile-first overview of their owned planets, exact Materials and
-ground-force totals, canonical nine-unit roster totals, and latest combined
-Materials and planetary-force activity. The server derives ownership and
-faction from persisted authenticated state and reads the complete overview in
-one PostgreSQL `REPEATABLE READ` snapshot. Exact `BIGINT` values are aggregated
-as JavaScript `bigint` and returned to the page as decimal strings.
+mobile-first overview of their owned planets, exact stored and unclaimed
+Materials totals, aggregate Materials production rate, ground-force totals,
+canonical nine-unit roster totals, and latest combined Materials and
+planetary-force activity. The server derives ownership and faction from
+persisted authenticated state and reads the complete overview in one
+PostgreSQL `REPEATABLE READ` snapshot using one database timestamp. Exact
+`BIGINT` values are aggregated as JavaScript `bigint` and returned to the page
+as decimal strings.
 
-The command center creates no planet or stack rows and exposes no mutation
-controls. Recruitment, costs, production, queues, timers, transport, combat,
-bonuses, and background processing remain unimplemented.
+Rendering creates no planet or stack rows and performs no production claim.
+The only command-center mutation control is the explicit, owner-protected
+per-planet Materials claim described above. Recruitment, costs, unit
+production, queues, transport, combat, further bonuses, and general background
+processing remain unimplemented.

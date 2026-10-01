@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "planet"
+ADD COLUMN "materialsProductionCursor"
+TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

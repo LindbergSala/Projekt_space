@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { getAuthenticatedCivilizationCommandCenter } from "../../lib/authenticated-civilization.js"
+import { claimPlanetMaterialsProductionFromCommandCenterAction } from "./actions.js"
 
 export const metadata = {
   title: "Command Center | Projekt_space",
@@ -49,8 +50,16 @@ export default async function CivilizationCommandCenterPage() {
               <dd>{civilization.summary.planetCount}</dd>
             </div>
             <div>
-              <dt>Materials</dt>
+              <dt>Stored Materials</dt>
               <dd>{civilization.summary.materials}</dd>
+            </div>
+            <div>
+              <dt>Unclaimed Materials</dt>
+              <dd>{civilization.summary.unclaimedMaterials}</dd>
+            </div>
+            <div>
+              <dt>Materials production</dt>
+              <dd>{civilization.summary.materialsProductionPerHour} / hour</dd>
             </div>
             <div>
               <dt>Ground forces</dt>
@@ -84,8 +93,16 @@ export default async function CivilizationCommandCenterPage() {
                   </div>
                   <dl>
                     <div>
-                      <dt>Materials</dt>
+                      <dt>Stored Materials</dt>
                       <dd>{planet.materials}</dd>
+                    </div>
+                    <div>
+                      <dt>Production</dt>
+                      <dd>{planet.production.ratePerHour} / hour</dd>
+                    </div>
+                    <div>
+                      <dt>Available to claim</dt>
+                      <dd>{planet.production.availableMaterials}</dd>
                     </div>
                     <div>
                       <dt>Ground forces</dt>
@@ -96,6 +113,17 @@ export default async function CivilizationCommandCenterPage() {
                       <dd>{planet.occupiedUnitTypes}</dd>
                     </div>
                   </dl>
+                  {planet.production.availableMaterials !== "0" ? (
+                    <form
+                      action={claimPlanetMaterialsProductionFromCommandCenterAction}
+                      className="materials-production-claim"
+                    >
+                      <input name="planetId" type="hidden" value={planet.id} />
+                      <button className="primary-button" type="submit">
+                        Claim {planet.production.availableMaterials} Materials
+                      </button>
+                    </form>
+                  ) : null}
                   <Link
                     className="secondary-link"
                     href={`/planets/${encodeURIComponent(planet.id)}`}

@@ -8,6 +8,25 @@
   screens, and usable through touch controls.
 - Vercel is the selected hosting platform when deployment is authorized.
 
+## Confirmed Materials production
+
+- Passive Materials production is computed per planet from a persisted
+  `materialsProductionCursor` and authoritative PostgreSQL time.
+- The base rate is 10 Materials per completed hour. The Orthevan Directorate
+  rate is 11; every other canonical faction uses the base rate.
+- Each planet stores at most 72 completed hours of unclaimed production. There
+  is no Materials capacity.
+- Ordinary claims advance the cursor by only the completed claimed hours, so
+  sub-hour progress is preserved. Claims at or beyond the cap award exactly 72
+  hours and reset the cursor to current database time.
+- Status reads are read-only. Claims are explicit server commands that derive
+  ownership, faction, time, rate, delta, and resulting balance on the server.
+  The User and owned Planet are locked in that order; balance, cursor, and one
+  immutable Materials-ledger row commit atomically.
+- This system deliberately requires no scheduled job, polling process, queue,
+  or background worker. It does not resolve the broader event-processing
+  architecture below.
+
 ## Proposed event processing
 
 This section documents a proposal, not an approved production architecture or

@@ -132,16 +132,20 @@ test("Materials is serialized exactly and never selected by the planet list", as
   assert.doesNotMatch(listFunction, /materials/u)
 })
 
-test("planet detail renders read-only Materials without a resource mutation", async () => {
+test("planet detail renders stored Materials with only the bounded production claim", async () => {
   const page = await source("app/planets/[planetId]/page.js")
   const actions = await source("app/planets/actions.js")
 
   assert.doesNotMatch(page, /^['"]use client['"]/mu)
   assert.match(page, /<h2 id="resources-title">Resources<\/h2>/u)
-  assert.match(page, /<dt>Materials<\/dt>/u)
+  assert.match(page, /<dt>Stored Materials<\/dt>/u)
   assert.match(page, /<dd>\{planet\.materials\}<\/dd>/u)
   assert.doesNotMatch(page, /name="materials"|name="Materials"/u)
-  assert.doesNotMatch(actions, /materials|Materials/u)
+  assert.match(actions, /claimPlanetMaterialsProductionAction/u)
+  assert.doesNotMatch(
+    actions,
+    /applyAuthenticatedPlanetMaterialsTransaction|operationKey|\bdelta\b/u,
+  )
 })
 
 test("local PostgreSQL enforces defaults, precision, ownership, and rename preservation", async () => {

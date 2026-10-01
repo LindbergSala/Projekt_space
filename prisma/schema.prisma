@@ -74,14 +74,15 @@ model Verification {
 }
 
 model Planet {
-  id                   String                      @id
-  name                 String                      @default("Unnamed Planet") @db.VarChar(40)
-  materials            BigInt                      @default(0) @db.BigInt
-  ownerId              String
-  owner                User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  materialTransactions PlanetMaterialTransaction[]
-  unitStacks           PlanetUnitStack[]
-  unitTransactions     PlanetUnitTransaction[]
+  id                        String                      @id
+  name                      String                      @default("Unnamed Planet") @db.VarChar(40)
+  materials                 BigInt                      @default(0) @db.BigInt
+  materialsProductionCursor DateTime                    @default(now()) @db.Timestamp(3)
+  ownerId                   String
+  owner                     User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  materialTransactions      PlanetMaterialTransaction[]
+  unitStacks                PlanetUnitStack[]
+  unitTransactions          PlanetUnitTransaction[]
 
   @@index([ownerId])
   @@map("planet")

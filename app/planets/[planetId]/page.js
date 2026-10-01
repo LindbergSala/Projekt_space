@@ -5,7 +5,12 @@ import {
   getAuthenticatedPlanetaryForces,
   getAuthenticatedUserPlanetById,
 } from "../../../lib/owned-planets.js";
-import { renamePlanetAction } from "../actions.js";
+import {
+  claimPlanetMaterialsProductionAction,
+  renamePlanetAction,
+} from "../actions.js";
+
+export const dynamic = "force-dynamic";
 
 function signedDelta(delta) {
   return delta.startsWith("-") ? delta : `+${delta}`;
@@ -37,10 +42,46 @@ export default async function PlanetPage({ params }) {
           <h2 id="resources-title">Resources</h2>
           <dl>
             <div>
-              <dt>Materials</dt>
+              <dt>Stored Materials</dt>
               <dd>{planet.materials}</dd>
             </div>
+            <div>
+              <dt>Production</dt>
+              <dd>{planet.production.ratePerHour} / hour</dd>
+            </div>
+            <div>
+              <dt>Available to claim</dt>
+              <dd>{planet.production.availableMaterials}</dd>
+            </div>
+            <div>
+              <dt>Offline storage</dt>
+              <dd>Up to {planet.production.maximumStoredHours} hours</dd>
+            </div>
           </dl>
+          <p className="materials-production-status">
+            {planet.production.isCapped ? (
+              "Offline storage is full. Claim now to restart production."
+            ) : (
+              <>
+                Next hourly production at{" "}
+                <time dateTime={planet.production.nextProductionAt}>
+                  {planet.production.nextProductionAt}
+                </time>
+                .
+              </>
+            )}
+          </p>
+          {planet.production.availableMaterials !== "0" ? (
+            <form
+              action={claimPlanetMaterialsProductionAction}
+              className="materials-production-claim"
+            >
+              <input name="planetId" type="hidden" value={planet.id} />
+              <button className="primary-button" type="submit">
+                Claim {planet.production.availableMaterials} Materials
+              </button>
+            </form>
+          ) : null}
         </section>
 
         <section

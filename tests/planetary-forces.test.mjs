@@ -278,7 +278,7 @@ test("authenticated operation and planet UI remain server-only and read-only", a
   assert.ok(forceSection)
   assert.doesNotMatch(forceSection, /<form|<input|<button|recruit|train|Materials cost/iu)
   assert.match(page, /<h1 id="planet-title">\{planet\.name\}<\/h1>/u)
-  assert.match(page, /<dt>Materials<\/dt>/u)
+  assert.match(page, /<dt>Stored Materials<\/dt>/u)
   assert.match(page, />Materials history<\/h2>/u)
   assert.match(page, /action=\{renamePlanetAction\}/u)
   assert.match(styles, /\.planetary-forces \{[\s\S]*min-width: 0/u)

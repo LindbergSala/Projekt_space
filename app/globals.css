@@ -1060,6 +1060,8 @@ button:disabled {
 }
 
 .planet-resources dl {
+  display: grid;
+  gap: 0.65rem;
   margin: 0.75rem 0 0;
 }
 
@@ -1084,6 +1086,23 @@ button:disabled {
   margin: 0;
   font-family: var(--font-geist-mono), monospace;
   overflow-wrap: anywhere;
+}
+
+.materials-production-status {
+  margin: 0.85rem 0 0;
+  color: #a9bfd6;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.materials-production-claim {
+  margin-top: 0.85rem;
+}
+
+.materials-production-claim .primary-button {
+  width: 100%;
+  min-height: 2.75rem;
+  white-space: normal;
 }
 
 .planetary-forces {

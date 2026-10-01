@@ -1047,6 +1047,41 @@ creation, and runtime database access remain pending.
   `/planets`, or `/civilization` from persisted owner state. This change adds no
   schema, migration, database mutation, API route, or client authentication.
 
+### Passive per-planet Materials production — 2026-10-01
+
+- `Planet.materialsProductionCursor` is now a non-null PostgreSQL
+  `TIMESTAMP(3)` with `CURRENT_TIMESTAMP` as its default. The migration adds
+  only this column: existing planets begin accruing at migration time, without
+  any balance or ledger backfill, and newly created planets use the database
+  default.
+- Production is computed per planet from authoritative database time and the
+  persisted account faction. The base rate is 10 Materials per completed hour;
+  Orthevan uses 11. Unclaimed production is capped at 72 completed hours with
+  no Materials balance capacity. Ordinary claims preserve partial-hour
+  progress; capped claims award exactly 72 hours and reset the cursor to the
+  current database time, discarding over-cap and partial time.
+- Planet detail and Civilization Command Center reads calculate status without
+  writing. Each overview uses one database timestamp for all planets and adds
+  exact decimal-string rate and unclaimed totals. A future or invalid cursor,
+  missing user, or unknown faction fails closed.
+- The browser submits only a strictly parsed planet ID. The claim operation
+  derives ownership, faction, rate, elapsed time, delta, and balance on the
+  server, locks User then owned Planet, and reads `clock_timestamp()` after the
+  locks. One transaction updates balance and cursor and appends exactly one
+  existing `PlanetMaterialTransaction` row with a deterministic, versioned
+  identity. Zero completed hours perform no write; concurrent claims serialize
+  so production cannot be claimed twice.
+- The mobile-first planet detail and Command Center show stored Materials,
+  rate, available claim, and touch-usable claim controls. Rendering remains
+  read-only and no client countdown or client-derived production state exists.
+- This bounded accrual system has no cron, polling, queue, scheduled workflow,
+  or background worker. General background-event processing remains an open
+  architecture decision. Local migration, Prisma generation, PostgreSQL
+  integration, concurrency tests, lint, build, and an HTTP dev-server smoke
+  test cover this checkpoint. Visual browser automation was unavailable in the
+  environment. No Neon, Vercel, deployment, commit, or push operation was
+  performed.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:

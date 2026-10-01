@@ -44,7 +44,10 @@ test("authenticated detail operation derives owner identity on the server", asyn
     /export async function getAuthenticatedUserPlanetById\(planetId\)/u,
   )
   assert.match(operation, /const ownerId = await requireAuthenticatedUserId\(\)/u)
-  assert.match(operation, /queryOwnedPlanetById\(\{\s*planetId,\s*ownerId,/u)
+  assert.match(
+    operation,
+    /queryOwnedPlanetDetailForOwner\(\{\s*planetId,\s*ownerId,/u,
+  )
   assert.doesNotMatch(
     operation,
     /searchParams|formData|FormData|cookies|localStorage|sessionStorage|console\./u,
@@ -164,7 +167,7 @@ test("planet detail page awaits params and hides missing or foreign planets", as
   )
   assert.match(page, /<h1 id="planet-title">\{planet\.name\}<\/h1>/u)
   assert.match(page, /<p className="planet-id">\{planet\.id\}<\/p>/u)
-  assert.match(page, /<dt>Materials<\/dt>/u)
+  assert.match(page, /<dt>Stored Materials<\/dt>/u)
   assert.match(page, /<dd>\{planet\.materials\}<\/dd>/u)
   assert.match(page, />Materials history<\/h2>/u)
   assert.match(page, />No material changes yet\.<\/p>/u)

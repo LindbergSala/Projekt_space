@@ -282,7 +282,10 @@ test("authenticated operation derives owner identity and has no browser entry po
     operation,
     /applyPlanetMaterialsTransactionForOwner\(\{\s*ownerId,\s*planetId,\s*delta,\s*operationKey,\s*prismaClient: prisma,/u,
   )
-  assert.doesNotMatch(actions, /Materials|materials|operationKey|delta/u)
+  assert.doesNotMatch(
+    actions,
+    /applyAuthenticatedPlanetMaterialsTransaction|operationKey|\bdelta\b/u,
+  )
   assert.doesNotMatch(
     page,
     /name=["'](?:materials|delta|operationKey)["']/iu,

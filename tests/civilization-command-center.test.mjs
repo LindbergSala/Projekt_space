@@ -43,11 +43,16 @@ function mockPrisma({
   materialTransactions = [],
   unitTransactions = [],
   capture = {},
+  currentTime = new Date("2026-10-01T12:00:00.000Z"),
 } = {}) {
   return {
     async $transaction(run, options) {
       capture.transactionOptions = options
       return run({
+        async $queryRaw() {
+          capture.timeQueryCount = (capture.timeQueryCount ?? 0) + 1
+          return [{ currentTime }]
+        },
         user: {
           async findUnique(query) {
             capture.userQuery = query
@@ -57,7 +62,10 @@ function mockPrisma({
         planet: {
           async findMany(query) {
             capture.planetQuery = query
-            return planets
+            return planets.map((planet) => ({
+              materialsProductionCursor: currentTime,
+              ...planet,
+            }))
           },
         },
         planetMaterialTransaction: {
@@ -184,13 +192,13 @@ test("authenticated command-center boundary preserves redirects and server-only 
     (page.match(/getAuthenticatedCivilizationCommandCenter\(/gu) ?? []).length,
     1,
   )
-  assert.doesNotMatch(page, /fetch\(|prisma|api\/|<form|<button|action=/u)
+  assert.doesNotMatch(page, /fetch\(|prisma|api\//u)
+  assert.match(page, /claimPlanetMaterialsProductionFromCommandCenterAction/u)
+  assert.match(page, /<form/u)
   await assert.rejects(
     access(path.join(ROOT_DIRECTORY, "app/civilization/route.js")),
   )
-  await assert.rejects(
-    access(path.join(ROOT_DIRECTORY, "app/civilization/actions.js")),
-  )
+  await access(path.join(ROOT_DIRECTORY, "app/civilization/actions.js"))
 })
 
 test("empty civilization uses one repeatable-read snapshot and performs no writes", async () => {
@@ -203,6 +211,7 @@ test("empty civilization uses one repeatable-read snapshot and performs no write
   assert.deepEqual(capture.transactionOptions, {
     isolationLevel: "RepeatableRead",
   })
+  assert.equal(capture.timeQueryCount, 1)
   assert.deepEqual(capture.userQuery, {
     where: { id: "authenticated-owner" },
     select: { factionKey: true },
@@ -228,6 +237,8 @@ test("empty civilization uses one repeatable-read snapshot and performs no write
     summary: {
       planetCount: 0,
       materials: "0",
+      materialsProductionPerHour: "0",
+      unclaimedMaterials: "0",
       groundForces: "0",
     },
     planets: [],
@@ -285,6 +296,8 @@ test("multiple planets aggregate exact Materials and faction forces", async () =
   assert.deepEqual(result.summary, {
     planetCount: 2,
     materials: "9007199254741004",
+    materialsProductionPerHour: "22",
+    unclaimedMaterials: "0",
     groundForces: "9007199254741003",
   })
   assert.deepEqual(result.planets, [
@@ -292,6 +305,14 @@ test("multiple planets aggregate exact Materials and faction forces", async () =
       id: "planet-a",
       name: "Alpha",
       materials: "9007199254740993",
+      production: {
+        ratePerHour: "11",
+        availableMaterials: "0",
+        claimableHours: "0",
+        maximumStoredHours: "72",
+        isCapped: false,
+        nextProductionAt: "2026-10-01T13:00:00.000Z",
+      },
       groundForces: "9007199254740996",
       occupiedUnitTypes: 2,
     },
@@ -299,6 +320,14 @@ test("multiple planets aggregate exact Materials and faction forces", async () =
       id: "planet-b",
       name: "Beta",
       materials: "11",
+      production: {
+        ratePerHour: "11",
+        availableMaterials: "0",
+        claimableHours: "0",
+        maximumStoredHours: "72",
+        isCapped: false,
+        nextProductionAt: "2026-10-01T13:00:00.000Z",
+      },
       groundForces: "7",
       occupiedUnitTypes: 1,
     },
@@ -708,6 +737,8 @@ test("local command-center read is owner-isolated, precise, and leaves every row
     assert.deepEqual(result.summary, {
       planetCount: 2,
       materials: "9007199254741004",
+      materialsProductionPerHour: "22",
+      unclaimedMaterials: "0",
       groundForces: "9007199254741003",
     })
     assert.equal(result.activity.length, 2)
@@ -745,7 +776,7 @@ test("local command-center read is owner-isolated, precise, and leaves every row
   }
 })
 
-test("command-center UI is read-only, complete, navigable, and mobile-safe", async () => {
+test("command-center UI has a narrow production claim, is complete, navigable, and mobile-safe", async () => {
   const page = await source("app/civilization/page.js")
   const styles = await source("app/globals.css")
   const accountPage = await source("app/account/page.js")
@@ -757,6 +788,9 @@ test("command-center UI is read-only, complete, navigable, and mobile-safe", asy
     "Command Center",
     "Worlds",
     "Materials",
+    "Unclaimed Materials",
+    "Materials production",
+    "Available to claim",
     "Ground forces",
     "Planets",
     "Civilization ground forces",
