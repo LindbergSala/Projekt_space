@@ -45,6 +45,12 @@ export default async function PlanetsPage() {
             ))}
           </ul>
         )}
+
+        <nav className="planet-navigation" aria-label="Planet navigation">
+          <Link className="secondary-link" href="/civilization">
+            Command Center
+          </Link>
+        </nav>
       </section>
     </main>
   );

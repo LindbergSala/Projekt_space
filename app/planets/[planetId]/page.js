@@ -134,6 +134,9 @@ export default async function PlanetPage({ params }) {
         </form>
 
         <nav className="planet-navigation" aria-label="Planet navigation">
+          <Link className="secondary-link" href="/civilization">
+            Command Center
+          </Link>
           <Link className="secondary-link planet-back-link" href="/planets">
             Back to planets
           </Link>

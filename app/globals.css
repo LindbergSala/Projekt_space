@@ -664,6 +664,289 @@ button:disabled {
   margin-top: 0;
 }
 
+.command-center-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1rem;
+  overflow-x: hidden;
+}
+
+.command-center-shell {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+}
+
+.command-center-header,
+.command-center-section {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-radius: 0.9rem;
+  background: rgb(8 24 42 / 92%);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 18%);
+  padding: clamp(1.25rem, 5vw, 2rem);
+}
+
+.command-center-header {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.command-center-header h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 12vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  overflow-wrap: anywhere;
+}
+
+.command-center-header > div > p:not(.eyebrow) {
+  margin: 0.75rem 0 0;
+  max-width: 46rem;
+  font-size: 1rem;
+}
+
+.command-center-header .command-center-faction {
+  color: #e5f1ff;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.command-center-header > .secondary-link,
+.command-center-empty .primary-link,
+.command-center-planet .secondary-link {
+  width: 100%;
+}
+
+.command-center-section {
+  margin-top: 1rem;
+}
+
+.command-center-section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 7vw, 2rem);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.command-center-summary,
+.command-center-planet-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0;
+}
+
+.command-center-summary > div,
+.command-center-planet {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-radius: 0.65rem;
+  background: #0b1b2d;
+  padding: 1rem;
+}
+
+.command-center-summary dt,
+.command-center-planet dt,
+.command-center-activity-kind {
+  color: #8dbce8;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.command-center-summary dd {
+  margin: 0.35rem 0 0;
+  color: #e5f1ff;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: clamp(1.35rem, 7vw, 2rem);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.command-center-empty {
+  margin-top: 1.25rem;
+}
+
+.command-center-empty p {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+}
+
+.command-center-planet {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.command-center-planet h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.command-center-planet-id {
+  margin: 0.3rem 0 0;
+  color: #a9bfd6;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.command-center-planet dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.command-center-planet dl > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.command-center-planet dd {
+  min-width: 0;
+  margin: 0;
+  color: #e5f1ff;
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.command-center-planet .secondary-link {
+  margin-top: auto;
+}
+
+.command-center-heading-with-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.command-center-heading-with-link > a {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.command-center-heading-with-link > .secondary-link {
+  width: 100%;
+}
+
+.command-center-force-list,
+.command-center-activity {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.command-center-force-list li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #29496c;
+  border-radius: 0.55rem;
+  background: #0b1b2d;
+  padding: 0.85rem;
+}
+
+.command-center-force-list li > div {
+  min-width: 0;
+}
+
+.command-center-force-list h3,
+.command-center-activity h3 {
+  margin: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.command-center-force-list p {
+  margin: 0.25rem 0 0;
+  color: #8dbce8;
+  font-size: 0.82rem;
+}
+
+.command-center-force-list li > span {
+  min-width: 0;
+  color: #e5f1ff;
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.command-center-activity-empty {
+  margin: 1rem 0 0;
+  font-size: 1rem;
+}
+
+.command-center-activity li {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-left: 0.3rem solid #8dbce8;
+  border-radius: 0.55rem;
+  background: #0b1b2d;
+  padding: 0.85rem;
+}
+
+.command-center-activity li.command-center-activity-unit {
+  border-left-color: #c4a8ff;
+}
+
+.command-center-activity-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem 1rem;
+}
+
+.command-center-activity-heading > div {
+  min-width: 0;
+}
+
+.command-center-activity-kind {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.command-center-activity time {
+  color: #a9bfd6;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.command-center-activity li > p {
+  margin: 0.55rem 0 0;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.command-center-activity strong {
+  color: #e5f1ff;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.command-center-navigation {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.command-center-navigation .secondary-link {
+  width: 100%;
+}
+
 .codex-page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -827,6 +1110,39 @@ button:disabled {
   }
 
   .codex-navigation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .command-center-page {
+    padding: 2rem;
+  }
+
+  .command-center-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .command-center-header > .secondary-link {
+    width: auto;
+  }
+
+  .command-center-heading-with-link > .secondary-link {
+    width: auto;
+  }
+
+  .command-center-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .command-center-planet-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .command-center-force-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .command-center-navigation {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -44,6 +44,9 @@ export default async function AccountPage() {
             <>
               <p>{faction.name}</p>
               <nav className="civilization-navigation" aria-label="Civilization navigation">
+                <Link className="primary-link" href="/civilization">
+                  Command Center
+                </Link>
                 <Link className="secondary-link" href={`/units/${faction.key}`}>
                   View faction roster
                 </Link>

@@ -4,7 +4,8 @@ Projekt_space is a persistent multiplayer sci-fi strategy game built with
 Next.js, JavaScript, PostgreSQL, and Prisma. The current local gameplay slice
 includes account-wide faction selection, owned planets, planet naming,
 Materials balances, planetary ground-force quantities, and immutable
-per-planet transaction histories for both.
+per-planet transaction histories for both. The authenticated `/civilization`
+command center provides a read-only overview of this authoritative state.
 
 ## Requirements
 
@@ -560,3 +561,17 @@ The owner-protected planet detail page displays the latest 20 ground-force
 changes in deterministic order. This history is read-only. No route, Server
 Action, or player control currently calls the mutation operation; production,
 recruitment, costs, timing, queues, transport, and combat remain unimplemented.
+
+## Civilization Command Center
+
+Authenticated players with a selected faction can open `/civilization` for a
+read-only, mobile-first overview of their owned planets, exact Materials and
+ground-force totals, canonical nine-unit roster totals, and latest combined
+Materials and planetary-force activity. The server derives ownership and
+faction from persisted authenticated state and reads the complete overview in
+one PostgreSQL `REPEATABLE READ` snapshot. Exact `BIGINT` values are aggregated
+as JavaScript `bigint` and returned to the page as decimal strings.
+
+The command center creates no planet or stack rows and exposes no mutation
+controls. Recruitment, costs, production, queues, timers, transport, combat,
+bonuses, and background processing remain unimplemented.

@@ -973,6 +973,39 @@ creation, and runtime database access remain pending.
   combat, starting armies, background-event processing, and deployment remain
   outside this checkpoint.
 
+### Civilization Command Center — 2026-10-01
+
+- `/civilization` is an authenticated, faction-gated React Server Component
+  that renders the current civilization as a read-only command center. Its
+  parameterless server-only operation derives the User ID from the verified
+  Better Auth session, redirects factionless accounts to `/faction`, and
+  accepts no browser-provided ownership or faction identity.
+- One interactive Prisma transaction at PostgreSQL `REPEATABLE READ` reads the
+  persisted faction, owner-scoped planets, Materials balances, unit stacks,
+  and both transaction histories from a consistent snapshot. The callback
+  contains only reads. Account, Session, Verification, and other users'
+  gameplay state are not queried for the view.
+- The overview returns planets in ascending ID order, exact per-planet and
+  civilization-wide Materials and ground-force totals, occupied unit-type
+  counts, and the canonical nine-unit faction roster with missing stacks
+  represented as zero. Database `BIGINT` values are aggregated as JavaScript
+  `bigint` and serialized only at the final boundary as decimal strings.
+- Recent activity queries at most 20 owner-scoped rows from each existing
+  ledger, merges them server-side, and returns the newest 20 overall. Equal
+  timestamps use Materials before unit activity and then internal transaction
+  ID descending; transaction IDs are removed before the result leaves the
+  policy. Corrupt balances, quantities, history, unknown units, or
+  cross-faction unique units fail closed with one generic read error.
+- The mobile-first page includes header, summary, planet cards, all nine force
+  totals, mixed recent activity, and navigation to faction, Unit Codex,
+  planets, individual planet details, and account. Account, planet list, and
+  planet detail pages each contain one Command Center link. Rendering creates
+  no starter planet and exposes no mutation controls.
+- This read model adds no schema, migration, gameplay rule, recruitment,
+  Materials generation or spending, costs, production, queues, buildings,
+  research, fleets, transport, combat, bonuses, capacity, timers, polling, or
+  background processing.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:
