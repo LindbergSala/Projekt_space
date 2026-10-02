@@ -10,6 +10,7 @@ import {
   renamePlanetAction,
 } from "../actions.js";
 import PlanetInfrastructure from "../planet-infrastructure.js";
+import PlanetRecruitment from "../planet-recruitment.js";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ function signedDelta(delta) {
 
 export default async function PlanetPage({ params, searchParams }) {
   const { planetId } = await params;
-  const { construction } = await searchParams;
+  const { construction, recruitment } = await searchParams;
   const [planet, forces] = await Promise.all([
     getAuthenticatedUserPlanetById(planetId),
     getAuthenticatedPlanetaryForces(planetId),
@@ -87,6 +88,8 @@ export default async function PlanetPage({ params, searchParams }) {
         </section>
 
         <PlanetInfrastructure planet={planet} status={construction} />
+
+        <PlanetRecruitment planet={planet} status={recruitment} />
 
         <section
           className="unit-history"

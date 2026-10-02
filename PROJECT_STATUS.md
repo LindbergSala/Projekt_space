@@ -33,14 +33,23 @@ The Codex repository inspection recorded the following verified checkpoint:
 
 ## Current progress
 
-- Timed planetary infrastructure is implemented locally in the 2026-10-02
+- Timed Line Infantry recruitment is implemented locally in the recruitment
+  checkpoint below: completed Barracks 1, 10 stored Materials and 300 seconds
+  per unit, explicit whole-batch collection and reset-safe idempotency. Other
+  unit/ship production remains future work. This task has no release authority.
+- The owner reports the preceding infrastructure release is published and its
+  manual Production test showed Extractor 1, Orthevan 22 Materials/hour and one
+  debit each for Extractor/Barracks. The recruitment task did not access or
+  independently verify Production. Earlier checkpoints retain their original
+  local-only verification boundaries.
+- Timed planetary infrastructure was verified locally in the 2026-10-02
   checkpoint below, including historical Extractor production, exact fractional
   carry, idempotent paid orders and reset incarnation protection. The new canon
   supersedes earlier unspecified building rules. No deployment is authorized.
 - The 2026-10-02 dependency security remediation below supersedes earlier
   unresolved npm-audit checkpoints: all eight advisories in the fresh baseline
   are addressed locally, and both final audit variants return zero findings.
-  This has not been deployed. The infrastructure checkpoint records a successful
+  Deployment status follows the newer owner report above. The infrastructure checkpoint records a successful
   task-owned Linux rebuild with trusted certificates and the remaining default
   launcher limitation. ESLint support limitations remain documented below.
 - Initial repository inspection is complete.
@@ -1500,6 +1509,169 @@ reassess their consumers on subsequent Prisma updates.
   `tests/materials-production-browser.test.mjs`,
   `tests/civilization-command-center.test.mjs`, `tests/faction-lifecycle.test.mjs`,
   `tests/planetary-forces.test.mjs`.
+
+### Timed Line Infantry recruitment — 2026-10-02
+
+Implementation and preserved behavior:
+
+- Baseline was clean `main`, empty staging, and both HEAD and freshly fetched
+  origin/main at `d2495320d9c25f67b96dc7c4026bc84d5e9f25b4`
+  (`feat: add timed planetary infrastructure`). Every Git command's exit status
+  was checked. Existing published infrastructure rules remain unchanged.
+- `PROJECT_SPACE_RECRUITMENT_CANON.md` records the approved first production
+  slice. The shared frozen `lib/unit-production.js` registry defines only
+  canonical Line Infantry, completed Barracks 1, 10 Materials and 300 seconds
+  per unit for every faction. No War Factory modifier applies. One uncollected
+  order occupies each planet's recruitment slot independently of construction.
+- `PlanetRecruitment` persists owner-scoped hashed operation identity, planet,
+  unit, BigInt quantity/paid cost, millisecond start/finish and nullable collected
+  timestamp. Its five checks constrain unit, quantity, cost and timestamp order;
+  a partial unique planet index where collectedAt is null covers Recruiting
+  and Ready. Collected orders remain until reset. Exact additive SQL is in
+  [`20261002180000_add_planet_recruitment/migration.sql`](prisma/migrations/20261002180000_add_planet_recruitment/migration.sql).
+  No prior migration was changed and no backfill is performed.
+- Start locks User then owned Planet, checks faction/epoch before exact replay,
+  reads database time after locking and atomically saves the debit, accepted
+  order and one negative Materials ledger row. Unclaimed production cannot pay.
+  Quantity, cost and stock remain BigInt; duration uses integer arithmetic.
+  An actual Prisma/adapter probe round-tripped year 9999's final millisecond,
+  while extended ISO years 10000 and 275760 failed with Invalid time value.
+  The supported finish bound is therefore checked before debit at
+  `9999-12-31T23:59:59.999Z`, with exact boundary regressions.
+- Collect uses the same locks, current faction/epoch and authoritative time,
+  then commits stack increase, deterministic positive unit ledger and collected
+  marker together. The extracted internal unit helper uses its caller's
+  transaction; its public operation contract is preserved. Both start and
+  Collect retries remain harmless after collection; conflicting intent fails.
+- Normal Server Action forms work with or without JavaScript, accepting only
+  intent fields plus ignored string-valued `$ACTION_` transport metadata.
+  Server-only wrappers derive identity from the session. Database errors stay
+  generic; expected errors and successful replay receive whitelisted feedback.
+  Completed Barracks unlocks the mobile Recruitment section. The saved total
+  cost/time, finish, refresh and explicit Collect are visible. Command Center
+  projects pending/ready orders with the existing snapshot clock and links to
+  the planet. Only collected stacks contribute to force totals and history.
+- Reset deletes recruitment first in the existing atomic reset, preserves auth
+  and other owners, and reuses infrastructureEpoch to reject old forms even
+  when starter planet identifiers repeat. GETs and elapsed time remain write
+  free. No timer, scheduler, automatic delivery, queue or refund was introduced.
+
+Local verification environment:
+
+- A task-owned PostgreSQL 18.6 tmpfs container/network
+  `projekt-space-recruitment-task` used only `127.0.0.1:55432`, database
+  `projekt_space_dev`, runtime role `projekt_space_app` and separate
+  `projekt_space_migrator`; shadow database `projekt_space_shadow` was disposable.
+  Random credentials and synthetic auth secrets existed only in the parent
+  runner and its child process environments. No environment file was changed,
+  and no connection was sourced from `.env.local`.
+- The task rebuilt a separate pinned Linux Prisma image from the current lock
+  using the existing trusted Windows CA chain as a BuildKit secret. TLS checks
+  remained enabled. Native Prisma generate/format/validate worked. Migration
+  used the previously documented Linux Prisma child plus host-loopback
+  `runMigrationWorkflow` and unchanged metadata hardener. The default launcher's
+  internal-address limitation remains outside this task.
+- All ten baseline migrations were applied first. Synthetic pre-migration
+  planets, exact Materials above Number precision, cursor/remainder/epoch,
+  completed construction, unit stacks and both ledgers were snapshotted. After
+  applying migration eleven, every original row/value matched exactly and
+  recruitment was empty. The preservation probe removed its own rows.
+
+Changed and new files (recruitment task only):
+
+- Documentation: `PROJECT_SPACE_RECRUITMENT_CANON.md` (new),
+  `PROJECT_SPACE_GROUND_UNITS_CANON.md`, `PROJECT_SPACE_INFRASTRUCTURE_CANON.md`,
+  `PROJECT_STATUS.md`, `README.md`, `ARCHITECTURE.md`.
+- Domain: `lib/unit-production.js`, `lib/planet-recruitment-state.js`,
+  `lib/planet-recruitment-policy.js` (new); `lib/planet-unit-transactions-policy.js`,
+  `lib/planet-infrastructure.js`, `lib/civilization-policy.js`,
+  `lib/owned-planets.js`, `lib/owned-planets-query.js`,
+  `lib/civilization-overview-query.js`.
+- UI: `app/planets/planet-recruitment.js`,
+  `app/planets/recruitment-feedback.js` (new); `app/planets/actions.js`,
+  `app/planets/[planetId]/page.js`, `app/planets/planet-infrastructure.js`,
+  `app/civilization/page.js`, `app/page.js`, `app/globals.css`.
+- Database: `prisma/schema.prisma` and the new migration linked above.
+- New regression tests: `tests/recruitment-policy.test.mjs`,
+  `tests/recruitment-transactions.test.mjs`,
+  `tests/recruitment-integration.test.mjs`, `tests/recruitment-browser.test.mjs`.
+- Existing regression updates: `tests/civilization-command-center.test.mjs`,
+  `tests/faction-lifecycle.test.mjs`, `tests/infrastructure-browser.test.mjs`,
+  `tests/landing-page.test.mjs`, `tests/materials-production.test.mjs`,
+  `tests/planet-unit-transactions.test.mjs`, `tests/planetary-forces.test.mjs`.
+
+Verification evidence:
+
+- The first serial full run exercised 300 tests, with 298 passing and the
+  hydrated recruitment subtest/parent failing. This was a browser-test
+  assumption: a later RSC-replaced form had no hidden `$ACTION_` fields and
+  legitimately used the actual `Next-Action` request header instead. The first
+  SSR and all native forms still carry metadata. The helper now verifies each
+  actual transport rather than assuming identical hidden fields after every
+  hydrated update. No product change or hand-built request was used. The first
+  real five-minute wait, one-unit payment/delivery, reload and duplicate Collect
+  checks had already passed before the later start-replay assertion failed.
+  The native recruitment subtest passed in that run.
+- The same full run passed the restricted-role/ownership/ACL checks, all five
+  direct CHECK constraints with exact SQLSTATE/constraint names, foreign-key
+  Restrict/Cascade behavior and unique-slot behavior before/after readiness and
+  collection. Reset races were controlled in both User-lock acquisition orders
+  against start and Collect. Rollback, auth preservation and stale-epoch
+  rejection after deterministic starter-ID reuse passed.
+- Initial standalone focused tests passed 58/58. Pure-filter attempts during
+  test development included a DB parent unexpectedly; the missing local URL
+  guard rejected it before connecting. Corrected pure filters passed. A broad
+  whitespace scan encountered existing Markdown hard breaks; unchanged original
+  formatting was preserved. Git diff checks and direct new-file whitespace/EOF
+  checks passed.
+- Prisma generate, format, validate, migrate dev, migration status (all 11
+  applied), lint and production build passed with explicit local process
+  settings. Existing typeless-package Node warnings remain unchanged. The mobile
+  Ready section was visually inspected at 390px with usable touch controls and
+  no horizontal overflow.
+
+- The final complete serial command
+  `node --test --test-concurrency=1 tests/*.test.mjs`, with
+  `RUN_MATERIALS_BROWSER_TESTS=1` and `MATERIALS_BROWSER_MODE=production`, passed
+  **300/300**, zero failures/skips, in 408.692 seconds. Final `npm run lint`
+  passed. Database-dependent files and browser servers ran serially.
+- Actual Chrome form submissions against `next start` returned HTTP 200 when
+  hydrated and 303 without JavaScript. Both recruitment modes proved one unit
+  costs exactly 10/300 seconds, ten cost 100/3000 seconds, exact BigInt balance
+  changes and one negative ledger per order, no early units, concurrent
+  construction, busy/ready gating, one delivery, replay before/after collection,
+  ordinary unit history/Command Center updates and read-only GETs. Expected
+  application feedback produced no unexpected browser runtime or database
+  errors. Existing Materials forms still credited exactly 209 once from both
+  Command Center and planet detail, and existing infrastructure forms passed.
+- The final hydrated browser run completed a real 300-second one-unit order.
+  After submitting the real form and checking payment, it closed every page;
+  PostgreSQL finish time was polled while all pages stayed closed. Passing that
+  finish changed no gameplay row. Reopening showed Ready, Collect delivered
+  exactly one unit/ledger entry, stale Collect delivered nothing more, and
+  reload retained quantity one. A later ten-unit order finished at quantity 11
+  with exactly two recruitment payments and two unit deliveries. The first run
+  independently completed the same real wait before its later test-only failure.
+- Playwright Core used the existing Chrome fallback documented by preceding
+  checkpoints; no new dependency was installed. This verifies local production
+  server/form behavior with secure auth-cookie policy, not deployment TLS,
+  OAuth or Production. Other long time cases used isolated synthetic fixtures
+  preserving the approved durations; no product timing backdoor exists.
+
+- Cleanup verified zero rows in every gameplay/auth table of the disposable
+  database and unchanged hashes of all existing environment files. The task's
+  tmpfs container, network and separately built tooling image were removed;
+  the two pre-existing stopped PostgreSQL containers and older tooling image
+  were preserved. The parent runner was stopped and its process credentials
+  discarded. Task-owned probes, logs, screenshot, copied baseline migrations,
+  CA export and temporary Dockerfile were removed; regression tests remain.
+- Final Git state remains `main` at the unchanged baseline HEAD/origin/main,
+  with 25 modified tracked files, 11 new files and empty staging. No dependency,
+  environment-file or previous-migration change was made. No Neon/Preview/
+  Production database, Production credential, remote mutation, commit, push or
+  deployment was used. The only remote Git operation was the authorized
+  baseline fetch. A future authorized release still needs migration eleven
+  before serving this code against its target database.
 
 ## Open decisions
 

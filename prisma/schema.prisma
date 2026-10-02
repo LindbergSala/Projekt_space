@@ -86,6 +86,7 @@ model Planet {
   unitStacks                   PlanetUnitStack[]
   unitTransactions             PlanetUnitTransaction[]
   constructions                PlanetConstruction[]
+  recruitments                 PlanetRecruitment[]
 
   @@index([ownerId])
   @@map("planet")
@@ -105,6 +106,22 @@ model PlanetConstruction {
   @@unique([planetId, buildingKey, targetLevel], map: "planet_construction_level_key")
   @@index([planetId, completesAt], map: "planet_construction_completion_idx")
   @@map("planet_construction")
+}
+
+model PlanetRecruitment {
+  id            String    @id
+  planetId      String
+  unitKey       String    @db.VarChar(32)
+  quantity      BigInt    @db.BigInt
+  materialsCost BigInt    @db.BigInt
+  startedAt     DateTime  @db.Timestamp(3)
+  completesAt   DateTime  @db.Timestamp(3)
+  collectedAt   DateTime? @db.Timestamp(3)
+  planet        Planet    @relation(fields: [planetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  // The one-uncollected-order partial unique index is defined in migration SQL.
+  @@index([planetId, startedAt, id], map: "planet_recruitment_history_idx")
+  @@map("planet_recruitment")
 }
 
 model PlanetUnitStack {

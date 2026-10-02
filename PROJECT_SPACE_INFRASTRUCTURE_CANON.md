@@ -101,9 +101,10 @@ the previous Materials amounts and cursor behavior exactly.
 
 ## Unit and ship unlocks
 
-Unlocks are cumulative. This delivery displays eligibility only; recruitment,
-unit production, ship production, transport, and combat are unavailable. No ship
-statistics or unit cost/base-time values are invented.
+Unlocks are cumulative. Line Infantry is recruitable from completed Barracks 1
+under [PROJECT_SPACE_RECRUITMENT_CANON.md](PROJECT_SPACE_RECRUITMENT_CANON.md).
+Other unit/ship unlocks remain descriptive eligibility; their production,
+transport and combat are unavailable. No additional costs or times are implied.
 
 | Barracks level | General unit |
 | --- | --- |

@@ -241,11 +241,7 @@ test("operation ID, validation, lock order, and server boundary are fixed", asyn
   const orderedMarkers = [
     'SELECT "factionKey"',
     'SELECT "id"',
-    "createPlanetUnitTransactionId(operationKey)",
-    "planetUnitTransaction.findUnique",
-    "planetUnitStack.findUnique",
-    "planetUnitStack.upsert",
-    "planetUnitTransaction.create",
+    "return applyPlanetUnitTransactionWithLockedPlanet",
   ]
   let previousIndex = -1
   for (const marker of orderedMarkers) {
@@ -258,6 +254,15 @@ test("operation ID, validation, lock order, and server boundary are fixed", asyn
     mutation,
     /WHERE "id" = \$\{planetId\}[\s\S]*AND "ownerId" = \$\{ownerId\}[\s\S]*FOR UPDATE/u,
   )
+
+  const sharedMutation = policy.slice(policy.indexOf("export async function applyPlanetUnitTransactionWithLockedPlanet"))
+  let sharedIndex = -1
+  for (const marker of ["createPlanetUnitTransactionId(operationKey)", "planetUnitTransaction.findUnique", "planetUnitStack.findUnique", "planetUnitStack.upsert", "planetUnitTransaction.create"]) {
+    const markerIndex = sharedMutation.indexOf(marker)
+    assert.ok(markerIndex > sharedIndex, `${marker} must preserve shared write order`)
+    sharedIndex = markerIndex
+  }
+  assert.doesNotMatch(sharedMutation, /\$transaction\(/u)
 
   assert.match(operation, /^import "server-only"$/mu)
   assert.match(

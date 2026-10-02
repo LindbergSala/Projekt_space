@@ -202,7 +202,7 @@ test("real infrastructure forms build and upgrade with authoritative completion"
         let page = await openPlanet(context, server, planetId)
         await assertLevels(page, 1, 0, "11")
         assert.match(await page.locator(".infrastructure-production-notice").innerText(),
-          /Unit recruitment and ship production are not available yet/u)
+          /Line Infantry recruitment is available[\s\S]*Other unit designs and all ship production remain future features/u)
         assert.equal(await page.locator(".infrastructure-building").count(), 5)
         const original = await planetSnapshot(prisma, planetId)
         assert.equal(original.constructions.length, 0)

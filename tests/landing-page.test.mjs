@@ -140,7 +140,7 @@ test("faction showcase is rendered from the canonical planetary registry", async
   }
 })
 
-test("landing claims distinguish available inspection from planned gameplay", async () => {
+test("landing claims distinguish current planet progression from future systems", async () => {
   const page = await source("app/page.js")
   const availableCopy = page.slice(
     page.indexOf("const FOUNDATION_FEATURES"),
@@ -151,17 +151,17 @@ test("landing claims distinguish available inspection from planned gameplay", as
     page.indexOf("export default async function Home"),
   )
 
-  assert.match(availableCopy, /production and spending controls are not yet available/u)
-  assert.match(availableCopy, /Recruitment remains a server foundation/u)
-  assert.match(availableCopy, /read-only overview/u)
+  assert.match(availableCopy, /Claim earned Materials/u)
+  assert.match(availableCopy, /build or upgrade timed infrastructure that progresses offline/u)
+  assert.match(availableCopy, /Recruit Line Infantry[\s\S]*collect it into your planet/u)
+  assert.match(availableCopy, /Other unit and ship production remains planned/u)
   assert.doesNotMatch(
     availableCopy,
-    /timed construction|research|Fleets|transport|plunder|conquest|Alliances/u,
+    /research|Fleets|transport|plunder|conquest|Alliances/u,
   )
   for (const plannedSystem of [
-    "construction",
-    "research",
-    "unit production",
+    "Research",
+    "additional unit and ship production",
     "Fleets",
     "transport",
     "combat",

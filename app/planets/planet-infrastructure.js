@@ -120,8 +120,8 @@ export default function PlanetInfrastructure({ planet, status }) {
         automatically, including while you are offline. Refresh to see the latest status.
       </p>
       <p className="infrastructure-production-notice">
-        Unit recruitment and ship production are not available yet.
-        Their unlocked designs are shown for future production.
+        {planet.recruitment.unitName} recruitment is available in the Recruitment section below.
+        Other unit designs and all ship production remain future features.
       </p>
       <ConstructionFeedback status={status} />
       {active ? (

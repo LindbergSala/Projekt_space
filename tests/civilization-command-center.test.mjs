@@ -29,6 +29,7 @@ const TABLE_DELEGATES = [
   ["Verification", "verification"],
   ["Planet", "planet"],
   ["PlanetConstruction", "planetConstruction"],
+  ["PlanetRecruitment", "planetRecruitment"],
   ["PlanetMaterialTransaction", "planetMaterialTransaction"],
   ["PlanetUnitStack", "planetUnitStack"],
   ["PlanetUnitTransaction", "planetUnitTransaction"],
@@ -41,6 +42,7 @@ async function source(relativePath) {
 function mockPrisma({
   user = { factionKey: "orthevan-directorate" },
   planets = [],
+  recruitmentOrders = [],
   materialTransactions = [],
   unitTransactions = [],
   capture = {},
@@ -77,6 +79,12 @@ function mockPrisma({
             return planets.flatMap((planet) => (planet.constructions ?? []).map(
               (construction) => ({ ...construction, planetId: planet.id }),
             ))
+          },
+        },
+        planetRecruitment: {
+          async findMany(query) {
+            capture.recruitmentQuery = query
+            return recruitmentOrders
           },
         },
         planetMaterialTransaction: {
@@ -144,6 +152,10 @@ async function gameplaySnapshot(prisma, ownerIds, planetIds) {
       orderBy: { id: "asc" },
     }),
     constructions: await prisma.planetConstruction.findMany({
+      where: { planetId: { in: planetIds } },
+      orderBy: { id: "asc" },
+    }),
+    recruitmentOrders: await prisma.planetRecruitment.findMany({
       where: { planetId: { in: planetIds } },
       orderBy: { id: "asc" },
     }),
@@ -250,6 +262,9 @@ test("empty civilization uses one repeatable-read snapshot and performs no write
     where: { planet: { ownerId: "authenticated-owner" } },
     orderBy: { targetLevel: "asc" },
   })
+  assert.deepEqual(capture.recruitmentQuery, {
+    where: { planet: { ownerId: "authenticated-owner" }, collectedAt: null },
+  })
   assert.deepEqual(capture.unitQuery.where, {
     planet: { ownerId: "authenticated-owner" },
   })
@@ -327,13 +342,26 @@ test("multiple planets aggregate exact Materials and faction forces", async () =
     unclaimedMaterials: "0",
     groundForces: "9007199254741003",
   })
-  const planetsWithoutInfrastructure = result.planets.map(({ infrastructure, ...planet }) => {
+  const planetsWithoutInfrastructure = result.planets.map(({ infrastructure, recruitment, ...planet }) => {
     assert.equal(infrastructure.asOf, "2026-10-01T12:00:00.000Z")
     assert.equal(infrastructure.activeConstruction, null)
     assert.deepEqual(infrastructure.buildings.map(({ key, level }) => [key, level]), [
       ["planetary-command", 1], ["materials-extractor", 0],
       ["barracks", 0], ["war-factory", 0], ["space-station", 0],
     ])
+    assert.deepEqual(recruitment, {
+      asOf: "2026-10-01T12:00:00.000Z",
+      unitKey: "line-infantry",
+      unitName: "Line Infantry",
+      costPerUnit: "10",
+      durationSecondsPerUnit: 300,
+      requiredBuildingKey: "barracks",
+      requiredBuildingName: "Barracks",
+      requiredBuildingLevel: 1,
+      canRecruit: false,
+      blockedReason: "Requires completed Barracks level 1.",
+      order: null,
+    })
     return planet
   })
   assert.deepEqual(planetsWithoutInfrastructure, [
@@ -386,6 +414,57 @@ test("multiple planets aggregate exact Materials and faction forces", async () =
     JSON.stringify(result),
     /ownerId|userId|transactionId|operationKey|account|session|verification/iu,
   )
+})
+
+test("command-center recruitment shares its snapshot time and excludes pending recruits from forces", async () => {
+  const completesAt = new Date("2026-10-01T12:00:00.000Z")
+  const savedOrder = {
+    id: `recruitment_${"b".repeat(64)}`,
+    planetId: "planet-owned",
+    unitKey: "line-infantry",
+    quantity: 10n,
+    materialsCost: 100n,
+    startedAt: new Date(completesAt.getTime() - 3_000_000),
+    completesAt,
+    collectedAt: null,
+  }
+  const fixture = {
+    planets: [{
+      id: "planet-owned", name: "Owned", materials: 40n,
+      unitStacks: [{ unitKey: "line-infantry", quantity: 3n }],
+      constructions: [{
+        buildingKey: "barracks", fromLevel: 0, targetLevel: 1, materialsCost: 20n,
+        startedAt: new Date(completesAt.getTime() - 4_000_000),
+        completesAt: new Date(completesAt.getTime() - 3_880_000),
+      }],
+    }],
+    recruitmentOrders: [savedOrder],
+  }
+  const snapshot = structuredClone(fixture)
+  for (const [currentTime, status] of [
+    [new Date(completesAt.getTime() - 1), "recruiting"],
+    [completesAt, "ready"],
+  ]) {
+    const capture = {}
+    const result = await queryCivilizationCommandCenterForOwner({
+      ownerId: "authenticated-owner",
+      prismaClient: mockPrisma({ ...fixture, currentTime, capture }),
+    })
+    assert.equal(capture.timeQueryCount, 1)
+    assert.deepEqual(capture.recruitmentQuery.where, {
+      planet: { ownerId: "authenticated-owner" }, collectedAt: null,
+    })
+    const planet = result.planets[0]
+    assert.equal(planet.recruitment.asOf, planet.infrastructure.asOf)
+    assert.equal(planet.recruitment.asOf, currentTime.toISOString())
+    assert.equal(planet.recruitment.order.status, status)
+    assert.equal(planet.recruitment.order.quantity, "10")
+    assert.equal(planet.recruitment.canRecruit, false)
+    assert.equal(planet.groundForces, "3")
+    assert.equal(result.summary.groundForces, "3")
+    assert.equal(result.forces.find(({ key }) => key === "line-infantry").quantity, "3")
+    assert.deepEqual(fixture, snapshot)
+  }
 })
 
 test("all faction rosters are canonical and invalid stored units fail closed", async () => {
@@ -791,6 +870,9 @@ test("local command-center read is owner-isolated, precise, and leaves every row
     )
     assert.equal(result.forces.some(({ key }) => key === "razor-beast"), false)
   } finally {
+    await prisma.planetRecruitment.deleteMany({
+      where: { planetId: { in: planetIds } },
+    }).catch(() => {})
     await prisma.planetConstruction.deleteMany({
       where: { planetId: { in: planetIds } },
     }).catch(() => {})

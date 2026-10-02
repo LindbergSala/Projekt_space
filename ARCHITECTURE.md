@@ -65,12 +65,47 @@
   first snapshot read, evaluates both infrastructure and resource production.
   Separate HTTP requests can naturally observe different times. Page refresh
   updates the presentation; clients never authorize completion.
-- Unit/ship unlocks are descriptive eligibility only. Recruitment, ship
-  production, transport and combat are not implemented. Factory time bonuses
-  are recorded for future orders and do not change building durations.
+- Unit/ship unlocks describe eligibility. Line Infantry recruitment is the first
+  implemented production rule below; other unit/ship production, transport and
+  combat remain unavailable. Factory time bonuses do not change building or
+  Barracks recruitment durations.
 
 This bounded timestamp model requires no scheduler and does not resolve the
 shared-world event ordering and offline combat proposal below.
+
+## Confirmed timed Line Infantry recruitment
+
+- `PROJECT_SPACE_RECRUITMENT_CANON.md` and `lib/unit-production.js` define the
+  shared server/UI rule: completed Barracks 1, 10 Materials and 300 seconds per
+  unit, with no faction modifier. Only `line-infantry` is recruitable.
+- `PlanetRecruitment` stores the owner-scoped hashed operation ID, planet,
+  canonical unit key, BigInt quantity/cost, accepted start/finish timestamps and
+  nullable collection timestamp. CHECK constraints and a partial unique planet
+  index where collectedAt is null enforce one uncollected order, independently
+  of the construction slot. Accepted terms are never recomputed on replay.
+- Start and Collect lock the session's User then owned Planet, check stored
+  faction and infrastructureEpoch before replay, and read PostgreSQL clock time
+  after locking. Start commits the whole stored-Materials debit, saved order
+  and one negative ledger row together. Quantity, stock, cost and adapter-safe
+  finish-time limits are checked before debit.
+- Read projections use the detail/Command Center's existing RepeatableRead
+  snapshot and clock. Recruiting becomes Ready exactly at the saved finish;
+  both occupy the slot. Neither GETs nor elapsed time mutate orders or forces.
+- Collect commits the saved quantity into PlanetUnitStack, one positive unit
+  ledger row and collectedAt in a single transaction. The internal unit helper
+  reuses the caller's locked transaction, never another top-level transaction.
+  Its delivery identity derives from the order in a separate hash domain.
+  Repeated collection is harmless; original start retries return the same order
+  even after collection. Conflicting intent reuse fails.
+- Strict native/JavaScript forms carry only intent fields; string `$ACTION_`
+  transport fields supply no application values. Server-only wrappers derive
+  identity from the session. Expected errors are whitelisted and raw database
+  errors remain generic. Personal reads remain outside shared caches.
+- Reset deletes recruitment before planets in its existing atomic transaction,
+  preserves auth/other owners, and invalidates old start/collect forms through
+  the existing infrastructureEpoch even when starter IDs are reused. Collected
+  orders otherwise remain as history. There is no queue, scheduler, automatic
+  delivery, cancellation or refund.
 
 ## Proposed event processing
 

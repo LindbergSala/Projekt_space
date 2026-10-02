@@ -44,19 +44,19 @@ const FOUNDATION_FEATURES = [
     marker: "II",
     title: "Owned planets",
     description:
-      "Establish a first planet, browse owned worlds, and rename them through owner-protected controls.",
+      "Establish your first planet, name your worlds, and build or upgrade timed infrastructure that progresses offline.",
   },
   {
     marker: "III",
     title: "Exact Materials records",
     description:
-      "Inspect exact balances and immutable transaction history. Player production and spending controls are not yet available.",
+      "Claim earned Materials, spend stored resources on construction and recruitment, and inspect exact balances and transaction history.",
   },
   {
     marker: "IV",
     title: "Planetary forces",
     description:
-      "View exact per-planet force quantities and history. Recruitment remains a server foundation, not a player-facing system.",
+      "Recruit Line Infantry, let the paid batch train offline, and collect it into your planet’s forces. Other unit and ship production remains planned.",
   },
   {
     marker: "V",
@@ -68,7 +68,7 @@ const FOUNDATION_FEATURES = [
     marker: "VI",
     title: "Command Center",
     description:
-      "Survey owned worlds, Materials, ground forces, and recent ledger activity in one read-only overview.",
+      "Survey worlds, Materials, collected ground forces, construction and recruitment orders, then claim each planet’s earned production.",
   },
 ]
 
@@ -76,7 +76,7 @@ const STRATEGY_HORIZON = [
   {
     title: "Persistent progression",
     description:
-      "Planned foundations include reliable offline event processing and timed construction, research, and unit production.",
+      "Research, additional unit and ship production, and broader shared-world event processing remain planned beyond timed construction and Line Infantry recruitment.",
   },
   {
     title: "Reach beyond one world",
@@ -217,9 +217,9 @@ export default async function Home() {
                 <h2 id="foundation-title">Authoritative systems you can inspect today</h2>
               </div>
               <p>
-                The current experience focuses on secure ownership, exact
-                records, and a clear civilization overview—not unfinished
-                systems presented as playable features.
+                Grow your planets with timed infrastructure, claim earned
+                Materials, and recruit Line Infantry while keeping a clear
+                record of your civilization’s resources and forces.
               </p>
             </div>
             <div className="landing-feature-grid">

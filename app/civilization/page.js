@@ -3,6 +3,7 @@ import Link from "next/link"
 import { getAuthenticatedCivilizationCommandCenter } from "../../lib/authenticated-civilization.js"
 import { claimPlanetMaterialsProductionFromCommandCenterAction } from "./actions.js"
 import ConstructionFeedback from "../planets/construction-feedback.js"
+import RecruitmentFeedback from "../planets/recruitment-feedback.js"
 import { ConstructionFinishTime } from "../planets/planet-infrastructure.js"
 
 export const metadata = {
@@ -16,7 +17,7 @@ function signedDelta(delta) {
 }
 
 export default async function CivilizationCommandCenterPage({ searchParams }) {
-  const { construction } = await searchParams
+  const { construction, recruitment } = await searchParams
   const civilization = await getAuthenticatedCivilizationCommandCenter()
 
   return (
@@ -40,6 +41,7 @@ export default async function CivilizationCommandCenterPage({ searchParams }) {
         </header>
 
         <ConstructionFeedback status={construction} />
+        <RecruitmentFeedback status={recruitment} />
 
         <section
           className="command-center-section"
@@ -130,6 +132,23 @@ export default async function CivilizationCommandCenterPage({ searchParams }) {
                     </div>
                   ) : (
                     <p className="command-center-construction-idle">No construction in progress.</p>
+                  )}
+                  {planet.recruitment.order ? (
+                    <div className="command-center-recruitment">
+                      <strong>
+                        {planet.recruitment.order.quantity} {planet.recruitment.unitName}
+                        {" · "}{planet.recruitment.order.status === "ready" ? "Ready to collect" : "Recruiting"}
+                      </strong>
+                      <p>
+                        Finishes <ConstructionFinishTime value={planet.recruitment.order.completesAt} />.
+                        {" "}Collect on the planet to add these units to your ground forces.
+                      </p>
+                      <Link href={`/planets/${encodeURIComponent(planet.id)}#recruitment-title`}>
+                        Open recruitment
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className="command-center-recruitment-idle">No recruitment order awaiting collection.</p>
                   )}
                   {planet.production.availableMaterials !== "0" ? (
                     <form

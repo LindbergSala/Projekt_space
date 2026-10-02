@@ -122,6 +122,14 @@ test("planet detail status uses one database timestamp without writing", async (
               return []
             },
           },
+          planetRecruitment: {
+            async findFirst(query) {
+              assert.deepEqual(query, {
+                where: { planetId: "planet-owned", collectedAt: null },
+              })
+              return null
+            },
+          },
           planet: {
             async findFirst(query) {
               receivedQuery = query
@@ -152,6 +160,10 @@ test("planet detail status uses one database timestamp without writing", async (
     isCapped: false,
     nextProductionAt: "2026-10-01T13:00:00.000Z",
   })
+  assert.equal(planet.recruitment.asOf, currentTime.toISOString())
+  assert.equal(planet.recruitment.asOf, planet.infrastructure.asOf)
+  assert.equal(planet.recruitment.order, null)
+  assert.equal(planet.recruitment.canRecruit, false)
 })
 
 test("invalid time, future cursors, and unknown factions fail closed", () => {

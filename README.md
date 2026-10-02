@@ -3,7 +3,8 @@
 Projekt_space is a persistent multiplayer sci-fi strategy game built with
 Next.js, JavaScript, PostgreSQL, and Prisma. The current local gameplay slice
 includes account-wide faction selection, owned planets, planet naming,
-timed planetary infrastructure, Materials balances, planetary ground-force quantities, and immutable
+timed planetary infrastructure, timed Line Infantry recruitment, Materials balances,
+planetary ground-force quantities, and immutable
 per-planet transaction histories for both. Planets passively produce
 claimable Materials from authoritative database time. The authenticated
 `/civilization` command center provides an overview and bounded production
@@ -19,7 +20,7 @@ The root route `/` is the player-state router. It renders a complete,
 server-rendered public landing page for signed-out visitors and sends
 authenticated players to faction selection, planet establishment, or the
 Civilization Command Center according to their persisted state. The landing
-page presents the currently available read-only foundation separately from its
+page presents the currently available gameplay separately from its
 clearly labelled planned strategy horizon, and its faction showcase reads from
 the canonical planetary registry.
 
@@ -549,7 +550,8 @@ changed directly while the civilization exists.
 planetary gameplay, the selected nine-unit roster, and the destructive reset
 flow as appropriate. `/civilization/reset` requires the exact phrase
 `RESET CIVILIZATION`. A successful reset atomically deletes the account's
-construction history, planetary ground-force history, unit stacks, and Materials history before its
+recruitment orders, construction history, planetary ground-force history, unit
+stacks, and Materials history before its
 planets, then clears `User.factionKey`.
 The Better Auth User, Account, Session, credentials, and login capability are
 preserved, after which any faction may be selected for a fresh civilization.
@@ -658,8 +660,9 @@ and finish timestamps. Reads derive completed levels from PostgreSQL time;
 there is no finalize write, collection button, background job or required open
 browser. The mobile planet Infrastructure section lists effects, requirements,
 costs, durations and locked/unlocked designs. Refresh status works without
-JavaScript. Command Center summarizes ongoing work. Recruitment, ship production,
-transport and combat remain unavailable.
+JavaScript. Command Center summarizes ongoing work. Completed Barracks unlocks
+Line Infantry recruitment below; other unit/ship production, transport and combat
+remain unavailable.
 
 Construction locks User then Planet, derives faction/price/requirements on the
 server, and commits the debit, saved transition and negative Materials ledger
@@ -683,8 +686,9 @@ units in `PlanetUnitStack`. Missing rows represent quantity zero, so migrations
 and starter-planet creation do not fabricate armies. The owner-protected planet
 detail page derives the player's stored faction on the server and renders its
 seven general plus two unique units in canonical order with exact decimal
-quantities. This interface is read-only; unit production, costs, timing,
-transport, and combat remain unimplemented.
+quantities. Forces and history are read-only views. Explicit collection of a
+completed Line Infantry order adds units; other unit production, transport and
+combat remain unimplemented.
 
 ## Atomic planetary unit transactions
 
@@ -697,9 +701,47 @@ different planet, unit, or delta. Quantities and history values cross the
 application boundary only as decimal strings.
 
 The owner-protected planet detail page displays the latest 20 ground-force
-changes in deterministic order. This history is read-only. No route, Server
-Action, or player control currently calls the mutation operation; production,
-recruitment, costs, timing, queues, transport, and combat remain unimplemented.
+changes in deterministic order. This history is read-only. Recruitment collection
+shares the existing stack/ledger implementation inside the same transaction as
+the order's collection marker. It never opens a nested top-level transaction.
+
+## Timed Line Infantry recruitment
+
+[PROJECT_SPACE_RECRUITMENT_CANON.md](PROJECT_SPACE_RECRUITMENT_CANON.md) records
+the first approved unit-production rules. `lib/unit-production.js` supplies the
+same server/UI definition: completed Barracks 1, 10 stored Materials and 300
+seconds per Line Infantry, for every faction. Ten units cost 100 and take 50
+minutes. Factory bonuses do not apply.
+
+The owner starts a whole paid batch on the planet detail page. One uncollected
+order occupies each planet's recruitment slot independently of construction.
+PostgreSQL time projects Recruiting or Ready to collect; time passing offline
+does not write rows or deliver units. Explicit Collect recruits delivers the
+whole saved quantity exactly once, then frees the slot. Collected orders remain
+as history until civilization reset. Both forms work with and without JavaScript.
+
+Start locks User then owned Planet, checks faction and infrastructureEpoch,
+resolves exact intent-UUID replay, then atomically debits stored Materials,
+saves accepted price/times, and writes one negative Materials ledger row.
+Collect uses the same lock/epoch discipline and database clock, and commits
+stack, positive unit ledger and collection marker together. Retries reuse
+domain-separated deterministic identities. BigInt and timestamp limits are
+checked before payment; no client input supplies price, unit type or ownership.
+
+The additive migration is
+`prisma/migrations/20261002180000_add_planet_recruitment/migration.sql`. Its
+checks constrain quantities, costs, unit type and timestamps; a partial unique
+index on planetId where collectedAt is null covers both Recruiting and Ready.
+No existing rows or history are rewritten. Reset removes recruitment before
+planets and reuses the existing epoch protection against stale forms.
+
+Run the complete Node suite serially with verified, process-scoped local values:
+`node --test --test-concurrency=1 tests/*.test.mjs`. The recruitment browser test
+uses the existing `RUN_MATERIALS_BROWSER_TESTS=1` switch. With
+`MATERIALS_BROWSER_MODE=production` and a prior local build it exercises real
+`next start` forms with and without JavaScript, including one actual five-minute
+order with all pages closed. Other timing cases use test-owned fixtures that
+preserve canonical durations. This suite takes more than five minutes.
 
 ## Civilization Command Center
 
@@ -715,6 +757,8 @@ as decimal strings.
 
 Rendering creates no planet or stack rows and performs no production claim.
 The only command-center mutation control is the explicit, owner-protected
-per-planet Materials claim described above. Recruitment, costs, unit
-production, queues, transport, combat, further bonuses, and general background
-processing remain unimplemented.
+per-planet Materials claim described above. Planet cards also summarize pending
+or ready recruitment from the same snapshot clock and link to its controls.
+Uncollected recruits do not contribute to force totals. Other unit/ship
+production, waiting queues, transport, combat, further bonuses and general
+background processing remain unimplemented.

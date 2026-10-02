@@ -536,6 +536,7 @@ test("local reset is atomic, owner-scoped, retry-safe, preserves auth, and seria
             ),
           },
           planetConstruction: transaction.planetConstruction,
+          planetRecruitment: transaction.planetRecruitment,
           planetMaterialTransaction: {
             deleteMany: transaction.planetMaterialTransaction.deleteMany.bind(
               transaction.planetMaterialTransaction,

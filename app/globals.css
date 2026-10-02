@@ -1114,6 +1114,129 @@ button:disabled {
   margin-top: 1.6rem;
 }
 
+.planet-recruitment {
+  min-width: 0;
+  margin-top: 1.6rem;
+  border-top: 1px solid #29496c;
+  padding-top: 1.6rem;
+}
+
+.recruitment-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.recruitment-heading h2,
+.recruitment-order h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.planet-recruitment > h3 {
+  margin: 1rem 0 0;
+  font-size: 1.1rem;
+}
+
+.recruitment-heading form,
+.recruitment-heading button,
+.recruitment-start-form button,
+.recruitment-collect-form button {
+  width: 100%;
+  min-height: 2.75rem;
+  white-space: normal;
+}
+
+.planet-recruitment p,
+.command-center-recruitment p,
+.command-center-recruitment-idle,
+.recruitment-feedback {
+  max-width: none;
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.recruitment-details {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0;
+}
+
+.recruitment-details > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.recruitment-details dt,
+.command-center-recruitment-idle {
+  color: #9eb5cd;
+}
+
+.recruitment-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.recruitment-order,
+.command-center-recruitment {
+  min-width: 0;
+  border: 1px solid #527da5;
+  border-radius: 0.55rem;
+  background: #10283d;
+  padding: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.recruitment-order,
+.recruitment-collect-form {
+  margin-top: 1rem;
+}
+
+.recruitment-start-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.recruitment-start-form input:not([type="hidden"]) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+}
+
+.command-center-recruitment a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  color: #b9dcff;
+}
+
+.recruitment-feedback {
+  border: 1px solid #ba9770;
+  border-radius: 0.55rem;
+  background: #302719;
+  color: #fff1d9;
+  padding: 0.85rem;
+}
+
+.recruitment-feedback-success {
+  border-color: #5d9f90;
+  background: #102d29;
+  color: #c8f5e7;
+}
+
+.planet-recruitment .recruitment-blocked {
+  color: #f4deb6;
+}
+
 .infrastructure-heading,
 .infrastructure-building-heading {
   display: flex;
@@ -1303,6 +1426,11 @@ button:disabled {
 }
 
 @media (min-width: 48rem) {
+  .recruitment-heading form,
+  .recruitment-heading button {
+    width: auto;
+  }
+
   .infrastructure-heading form,
   .infrastructure-heading button {
     width: auto;

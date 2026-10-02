@@ -9,7 +9,7 @@
 
 **Purpose:** Single source of truth for planetary gameplay-unit concepts, battlefield roles, and approved faction presentations established so far.
 
-> This document records only what has been established. Numerical statistics, combat values, balance values, production costs, and production times are intentionally excluded because they have not yet been locked.
+> This document defines the roster and qualitative roles. Numerical combat statistics remain undecided. The separately approved first production rule for Line Infantry is recorded in [PROJECT_SPACE_RECRUITMENT_CANON.md](PROJECT_SPACE_RECRUITMENT_CANON.md); no other unit costs or production times are fixed.
 
 All four factions use the same seven general planetary gameplay definitions. Their gameplay roles, future statistics, production logic, and battlefield functions are shared. Factions may express those units through distinct visual design, equipment appearance, animation, effects, and presentation without creating additional gameplay definitions.
 
