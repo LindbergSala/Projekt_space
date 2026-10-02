@@ -3,7 +3,7 @@
 Projekt_space is a persistent multiplayer sci-fi strategy game built with
 Next.js, JavaScript, PostgreSQL, and Prisma. The current local gameplay slice
 includes account-wide faction selection, owned planets, planet naming,
-Materials balances, planetary ground-force quantities, and immutable
+timed planetary infrastructure, Materials balances, planetary ground-force quantities, and immutable
 per-planet transaction histories for both. Planets passively produce
 claimable Materials from authoritative database time. The authenticated
 `/civilization` command center provides an overview and bounded production
@@ -549,7 +549,7 @@ changed directly while the civilization exists.
 planetary gameplay, the selected nine-unit roster, and the destructive reset
 flow as appropriate. `/civilization/reset` requires the exact phrase
 `RESET CIVILIZATION`. A successful reset atomically deletes the account's
-planetary ground-force history, unit stacks, and Materials history before its
+construction history, planetary ground-force history, unit stacks, and Materials history before its
 planets, then clears `User.factionKey`.
 The Better Auth User, Account, Session, credentials, and login capability are
 preserved, after which any faction may be selected for a fresh civilization.
@@ -560,18 +560,24 @@ lifecycle.
 ## Per-planet Materials production
 
 Every planet produces Materials passively from its persisted
-`materialsProductionCursor`. The base rate is `10` Materials per completed
-hour; the Orthevan Directorate produces `11`. Production stores at most 72
+`materialsProductionCursor` and saved Extractor transitions. The level-0 rate is
+`10` Materials per completed hour; the Orthevan Directorate produces `11`.
+Each completed Extractor level adds another base rate, up to `60`/`66` at level 5.
+Production stores at most 72
 completed hours per planet and has no Materials capacity. Sub-hour progress is
 preserved by ordinary claims. At or beyond the 72-hour limit, a claim awards
 exactly 72 hours and resets the cursor to current database time, discarding
-older over-cap time and partial progress.
+later over-cap time and partial progress. The credited window is the first 72
+complete hours after the cursor. Within the credited hours, rates are integrated
+across their saved completion timestamps, including changes inside an hour.
+Integer `bigint` Materials-millisecond numerators preserve fractional earnings
+in `materialsProductionRemainder` (0–3,599,999); claims never round away this value.
 
 Status reads use PostgreSQL time and never change balances or cursors. Players
 claim explicitly from the owner-protected planet detail or Civilization
 Command Center. The server derives owner, faction, rate, elapsed time, delta,
 and balance; the browser submits only the planet ID. A claim locks the User and
-owned Planet in that order, updates the balance and cursor, and appends exactly
+owned Planet in that order, updates the balance, cursor and remainder, and appends exactly
 one existing `PlanetMaterialTransaction` ledger row atomically. A claim with no
 completed hour is a no-op. No cron job, queue, polling loop, or background
 worker is involved.
@@ -601,12 +607,12 @@ Run in PowerShell, with that local process connection already configured:
 
 ```powershell
 $env:RUN_MATERIALS_BROWSER_TESTS = "1"
-node --test --test-concurrency=1 tests/materials-production-browser.test.mjs
+node --test --test-concurrency=1 tests/*browser.test.mjs
 node --test --test-concurrency=1 tests/*.test.mjs
 npm run lint
 npm run build
 $env:MATERIALS_BROWSER_MODE = "production"
-node --test --test-concurrency=1 tests/materials-production-browser.test.mjs
+node --test --test-concurrency=1 tests/*browser.test.mjs
 Remove-Item Env:MATERIALS_BROWSER_MODE
 ```
 
@@ -615,6 +621,15 @@ skipped unless `RUN_MATERIALS_BROWSER_TESTS=1`. It clicks actual Claim buttons i
 both Command Center and planet detail, with and without JavaScript, checks the
 real POST and refreshed UI, and verifies exact balance/cursor/ledger changes
 and immediate stale-form retries against PostgreSQL.
+
+The infrastructure browser regression uses the same opt-in switch and server
+mode. It submits real build and upgrade forms with and without JavaScript,
+checks active/completed levels, payment, expected errors and stale-form retries,
+and verifies read-only detail and Command Center status. Development with
+JavaScript includes a real 60-second Extractor order with all pages closed while
+the PostgreSQL clock advances. Longer orders use isolated synthetic timestamp
+fixtures that preserve their canonical durations; product timers are never
+shortened. Run these database-dependent browser files serially as well.
 
 Both modes also check signup and login through the real auth API, session-cookie
 attributes, signed-out account protection, and server-directed entry for a new
@@ -627,6 +642,39 @@ This verifies production-build Claim behavior; it does not verify HTTPS transpor
 or browser login/registration forms. Build separately with verified local,
 process-scoped database and auth settings before running production mode; never
 let a build or test inherit a remote database URL from an environment file.
+
+## Timed planetary infrastructure
+
+[PROJECT_SPACE_INFRASTRUCTURE_CANON.md](PROJECT_SPACE_INFRASTRUCTURE_CANON.md)
+records the approved costs, exact durations, Command requirements, faction
+production rates and cumulative design unlocks. `lib/planet-infrastructure.js`
+is the shared executable registry. Every planet starts with Command 1 and four
+absent facilities; Materials still start at zero. The first Extractor requires
+the first complete production hour followed by an explicit claim.
+
+An owner can start one next-level order per planet using stored Materials.
+`PlanetConstruction` stores each paid transition and its authoritative start
+and finish timestamps. Reads derive completed levels from PostgreSQL time;
+there is no finalize write, collection button, background job or required open
+browser. The mobile planet Infrastructure section lists effects, requirements,
+costs, durations and locked/unlocked designs. Refresh status works without
+JavaScript. Command Center summarizes ongoing work. Recruitment, ship production,
+transport and combat remain unavailable.
+
+Construction locks User then Planet, derives faction/price/requirements on the
+server, and commits the debit, saved transition and negative Materials ledger
+row atomically. Validated intent UUIDs make identical retries harmless even
+after completion; conflicting reuse and stale expected levels fail. A random
+`Planet.infrastructureEpoch` rejects forms from a prior civilization even when
+the deterministic starter ID is reused. Reset removes all construction history
+in its existing transaction and preserves authentication and other players.
+
+The additive migration is
+`prisma/migrations/20261002150000_add_planet_infrastructure/migration.sql`.
+Existing planets receive remainder zero, a fresh epoch and the implicit baseline;
+their original values, cursors and ledgers are not rewritten. Apply it only to
+an authorized target through the existing restricted migration workflow.
+See the local evidence and tooling limitations in `PROJECT_STATUS.md`.
 
 ## Per-planet planetary forces
 

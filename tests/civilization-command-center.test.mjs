@@ -28,6 +28,7 @@ const TABLE_DELEGATES = [
   ["Session", "session"],
   ["Verification", "verification"],
   ["Planet", "planet"],
+  ["PlanetConstruction", "planetConstruction"],
   ["PlanetMaterialTransaction", "planetMaterialTransaction"],
   ["PlanetUnitStack", "planetUnitStack"],
   ["PlanetUnitTransaction", "planetUnitTransaction"],
@@ -64,8 +65,18 @@ function mockPrisma({
             capture.planetQuery = query
             return planets.map((planet) => ({
               materialsProductionCursor: currentTime,
+              materialsProductionRemainder: 0n,
+              constructions: [],
               ...planet,
             }))
+          },
+        },
+        planetConstruction: {
+          async findMany(query) {
+            capture.constructionQuery = query
+            return planets.flatMap((planet) => (planet.constructions ?? []).map(
+              (construction) => ({ ...construction, planetId: planet.id }),
+            ))
           },
         },
         planetMaterialTransaction: {
@@ -121,7 +132,19 @@ async function gameplaySnapshot(prisma, ownerIds, planetIds) {
     }),
     planets: await prisma.planet.findMany({
       where: { id: { in: planetIds } },
-      select: { id: true, ownerId: true, name: true, materials: true },
+      select: {
+        id: true,
+        ownerId: true,
+        name: true,
+        materials: true,
+        materialsProductionCursor: true,
+        materialsProductionRemainder: true,
+        infrastructureEpoch: true,
+      },
+      orderBy: { id: "asc" },
+    }),
+    constructions: await prisma.planetConstruction.findMany({
+      where: { planetId: { in: planetIds } },
       orderBy: { id: "asc" },
     }),
     materialTransactions: await prisma.planetMaterialTransaction.findMany({
@@ -223,6 +246,10 @@ test("empty civilization uses one repeatable-read snapshot and performs no write
   assert.deepEqual(capture.materialQuery.where, {
     planet: { ownerId: "authenticated-owner" },
   })
+  assert.deepEqual(capture.constructionQuery, {
+    where: { planet: { ownerId: "authenticated-owner" } },
+    orderBy: { targetLevel: "asc" },
+  })
   assert.deepEqual(capture.unitQuery.where, {
     planet: { ownerId: "authenticated-owner" },
   })
@@ -300,7 +327,16 @@ test("multiple planets aggregate exact Materials and faction forces", async () =
     unclaimedMaterials: "0",
     groundForces: "9007199254741003",
   })
-  assert.deepEqual(result.planets, [
+  const planetsWithoutInfrastructure = result.planets.map(({ infrastructure, ...planet }) => {
+    assert.equal(infrastructure.asOf, "2026-10-01T12:00:00.000Z")
+    assert.equal(infrastructure.activeConstruction, null)
+    assert.deepEqual(infrastructure.buildings.map(({ key, level }) => [key, level]), [
+      ["planetary-command", 1], ["materials-extractor", 0],
+      ["barracks", 0], ["war-factory", 0], ["space-station", 0],
+    ])
+    return planet
+  })
+  assert.deepEqual(planetsWithoutInfrastructure, [
     {
       id: "planet-a",
       name: "Alpha",
@@ -475,6 +511,8 @@ test("corrupt command-center state always uses one generic read error", async ()
   const corruptCases = [
     { planets: [{ ...basePlanet, materials: -1n }] },
     { planets: [{ ...basePlanet, materials: BIGINT_MAXIMUM + 1n }] },
+    { planets: [{ ...basePlanet, materialsProductionRemainder: -1n }] },
+    { planets: [{ ...basePlanet, constructions: [{ buildingKey: "unknown" }] }] },
     {
       planets: [{
         ...basePlanet,
@@ -753,6 +791,9 @@ test("local command-center read is owner-isolated, precise, and leaves every row
     )
     assert.equal(result.forces.some(({ key }) => key === "razor-beast"), false)
   } finally {
+    await prisma.planetConstruction.deleteMany({
+      where: { planetId: { in: planetIds } },
+    }).catch(() => {})
     await prisma.planetUnitTransaction.deleteMany({
       where: { planetId: { in: planetIds } },
     }).catch(() => {})

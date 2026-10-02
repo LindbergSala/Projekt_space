@@ -9,6 +9,7 @@ import {
   claimPlanetMaterialsProductionAction,
   renamePlanetAction,
 } from "../actions.js";
+import PlanetInfrastructure from "../planet-infrastructure.js";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,9 @@ function signedDelta(delta) {
   return delta.startsWith("-") ? delta : `+${delta}`;
 }
 
-export default async function PlanetPage({ params }) {
+export default async function PlanetPage({ params, searchParams }) {
   const { planetId } = await params;
+  const { construction } = await searchParams;
   const [planet, forces] = await Promise.all([
     getAuthenticatedUserPlanetById(planetId),
     getAuthenticatedPlanetaryForces(planetId),
@@ -29,7 +31,7 @@ export default async function PlanetPage({ params }) {
 
   return (
     <main className="auth-page">
-      <section className="auth-card" aria-labelledby="planet-title">
+      <section className="auth-card planet-detail-card" aria-labelledby="planet-title">
         <div className="auth-heading">
           <h1 id="planet-title">{planet.name}</h1>
         </div>
@@ -83,6 +85,8 @@ export default async function PlanetPage({ params }) {
             </form>
           ) : null}
         </section>
+
+        <PlanetInfrastructure planet={planet} status={construction} />
 
         <section
           className="unit-history"

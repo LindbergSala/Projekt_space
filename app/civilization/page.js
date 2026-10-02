@@ -2,6 +2,8 @@ import Link from "next/link"
 
 import { getAuthenticatedCivilizationCommandCenter } from "../../lib/authenticated-civilization.js"
 import { claimPlanetMaterialsProductionFromCommandCenterAction } from "./actions.js"
+import ConstructionFeedback from "../planets/construction-feedback.js"
+import { ConstructionFinishTime } from "../planets/planet-infrastructure.js"
 
 export const metadata = {
   title: "Command Center | Projekt_space",
@@ -13,7 +15,8 @@ function signedDelta(delta) {
   return delta.startsWith("-") ? delta : `+${delta}`
 }
 
-export default async function CivilizationCommandCenterPage() {
+export default async function CivilizationCommandCenterPage({ searchParams }) {
+  const { construction } = await searchParams
   const civilization = await getAuthenticatedCivilizationCommandCenter()
 
   return (
@@ -35,6 +38,8 @@ export default async function CivilizationCommandCenterPage() {
             View faction
           </Link>
         </header>
+
+        <ConstructionFeedback status={construction} />
 
         <section
           className="command-center-section"
@@ -113,6 +118,19 @@ export default async function CivilizationCommandCenterPage() {
                       <dd>{planet.occupiedUnitTypes}</dd>
                     </div>
                   </dl>
+                  {planet.infrastructure.activeConstruction ? (
+                    <div className="command-center-construction">
+                      <strong>
+                        {planet.infrastructure.activeConstruction.buildingName}
+                        {" · "}Level {planet.infrastructure.activeConstruction.targetLevel} in progress
+                      </strong>
+                      <p>
+                        Finishes <ConstructionFinishTime value={planet.infrastructure.activeConstruction.completesAt} />.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="command-center-construction-idle">No construction in progress.</p>
+                  )}
                   {planet.production.availableMaterials !== "0" ? (
                     <form
                       action={claimPlanetMaterialsProductionFromCommandCenterAction}

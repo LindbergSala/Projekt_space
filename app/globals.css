@@ -1105,6 +1105,215 @@ button:disabled {
   white-space: normal;
 }
 
+.planet-detail-card {
+  width: min(100%, 64rem);
+}
+
+.planet-infrastructure {
+  min-width: 0;
+  margin-top: 1.6rem;
+}
+
+.infrastructure-heading,
+.infrastructure-building-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.infrastructure-heading h2,
+.infrastructure-building h3,
+.infrastructure-active-work h3,
+.infrastructure-next-step h4 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.infrastructure-heading h2 {
+  font-size: 1.15rem;
+}
+
+.infrastructure-heading form,
+.infrastructure-heading button {
+  width: 100%;
+}
+
+.planet-infrastructure p,
+.command-center-construction p,
+.command-center-construction-idle,
+.construction-feedback {
+  max-width: none;
+  margin: 0.75rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.planet-infrastructure .infrastructure-production-notice {
+  color: #f4deb6;
+}
+
+.construction-feedback {
+  border: 1px solid #ba9770;
+  border-radius: 0.55rem;
+  background: #302719;
+  color: #fff1d9;
+  padding: 0.85rem;
+}
+
+.construction-feedback-success {
+  border-color: #5d9f90;
+  background: #102d29;
+  color: #c8f5e7;
+}
+
+.infrastructure-active-work,
+.command-center-construction {
+  min-width: 0;
+  border: 1px solid #527da5;
+  border-radius: 0.55rem;
+  background: #10283d;
+  padding: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.infrastructure-active-work {
+  margin-top: 1rem;
+}
+
+.infrastructure-active-work h3 {
+  font-size: 1rem;
+}
+
+.infrastructure-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.infrastructure-building {
+  min-width: 0;
+  border: 1px solid #29496c;
+  border-radius: 0.65rem;
+  background: #0b1b2d;
+  padding: 1rem;
+}
+
+.infrastructure-building h3 {
+  font-size: 1.1rem;
+}
+
+.infrastructure-building-heading > span {
+  flex-shrink: 0;
+  color: #b9dcff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.infrastructure-unlocks {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.infrastructure-unlocks li {
+  display: grid;
+  gap: 0.15rem;
+  border-left: 2px solid #385675;
+  padding-left: 0.7rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.infrastructure-unlock-status {
+  color: #9eb5cd;
+  font-size: 0.82rem;
+}
+
+.infrastructure-designs {
+  margin-top: 0.85rem;
+}
+
+.infrastructure-designs summary {
+  min-height: 2.75rem;
+  border-radius: 0.35rem;
+  color: #b9dcff;
+  padding-block: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.infrastructure-designs summary:focus-visible {
+  outline: 0.2rem solid #7fc1ff;
+  outline-offset: 0.18rem;
+}
+
+.infrastructure-next-step {
+  margin-top: 1rem;
+  border-top: 1px solid #29496c;
+  padding-top: 1rem;
+}
+
+.infrastructure-next-step h4 {
+  font-size: 0.95rem;
+}
+
+.infrastructure-next-step dl {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.65rem 0 0;
+}
+
+.infrastructure-next-step dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.infrastructure-next-step dt {
+  color: #9eb5cd;
+}
+
+.infrastructure-next-step dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.infrastructure-build-form {
+  margin-top: 0.85rem;
+}
+
+.infrastructure-build-form button {
+  width: 100%;
+  white-space: normal;
+}
+
+.planet-infrastructure .infrastructure-blocked {
+  color: #f4deb6;
+}
+
+.command-center-construction-idle {
+  color: #9eb5cd;
+}
+
+@media (min-width: 48rem) {
+  .infrastructure-heading form,
+  .infrastructure-heading button {
+    width: auto;
+  }
+
+  .infrastructure-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
 .planetary-forces {
   margin-top: 1.6rem;
   min-width: 0;

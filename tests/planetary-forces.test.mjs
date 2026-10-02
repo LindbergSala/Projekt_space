@@ -445,6 +445,7 @@ test("local database constraints, reads, reset isolation, and cleanup are exact"
     assert.equal(await prisma.account.count({ where: { id: accountId } }), 1)
     assert.equal(await prisma.session.count({ where: { id: sessionId } }), 1)
     assert.deepEqual(CIVILIZATION_RESET_SCOPE.deleted, [
+      "PlanetConstruction",
       "PlanetUnitTransaction",
       "PlanetUnitStack",
       "PlanetMaterialTransaction",

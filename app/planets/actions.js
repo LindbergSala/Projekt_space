@@ -7,8 +7,14 @@ import {
   claimAuthenticatedPlanetMaterialsProduction,
   ensureAuthenticatedUserStarterPlanet,
   renameAuthenticatedUserPlanet,
+  startAuthenticatedPlanetConstruction,
 } from "../../lib/owned-planets.js";
 import { readStrictMaterialsProductionClaim } from "../../lib/materials-production-claim-policy.js";
+import {
+  CONSTRUCTION_MESSAGES,
+  InfrastructureConstructionError,
+  readStrictInfrastructureConstruction,
+} from "../../lib/infrastructure-construction-policy.js";
 
 export async function establishFirstPlanetAction() {
   await ensureAuthenticatedUserStarterPlanet();
@@ -34,4 +40,34 @@ export async function claimPlanetMaterialsProductionAction(formData) {
   revalidatePath("/civilization");
   revalidatePath(planetPath);
   redirect(planetPath);
+}
+
+export async function startPlanetConstructionAction(formData) {
+  let input;
+  let status;
+
+  try {
+    input = readStrictInfrastructureConstruction(formData);
+    const result = await startAuthenticatedPlanetConstruction(input);
+    status = result.replayed ? "replayed" : "started";
+  } catch (error) {
+    // Authentication redirects and framework control flow must propagate.
+    if (!(error instanceof InfrastructureConstructionError)) {
+      throw error;
+    }
+
+    status = Object.hasOwn(CONSTRUCTION_MESSAGES, error.code)
+      ? error.code
+      : "unavailable";
+  }
+
+  revalidatePath("/civilization");
+
+  if (!input || status === "not-owned" || status === "faction-required") {
+    redirect(`/civilization?construction=${status}`);
+  }
+
+  const planetPath = `/planets/${encodeURIComponent(input.planetId)}`;
+  revalidatePath(planetPath);
+  redirect(`${planetPath}?construction=${status}#infrastructure-title`);
 }

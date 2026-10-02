@@ -33,11 +33,16 @@ The Codex repository inspection recorded the following verified checkpoint:
 
 ## Current progress
 
+- Timed planetary infrastructure is implemented locally in the 2026-10-02
+  checkpoint below, including historical Extractor production, exact fractional
+  carry, idempotent paid orders and reset incarnation protection. The new canon
+  supersedes earlier unspecified building rules. No deployment is authorized.
 - The 2026-10-02 dependency security remediation below supersedes earlier
   unresolved npm-audit checkpoints: all eight advisories in the fresh baseline
   are addressed locally, and both final audit variants return zero findings.
-  This has not been deployed. Linux tooling-image rebuild and ESLint support
-  limitations remain explicitly documented below.
+  This has not been deployed. The infrastructure checkpoint records a successful
+  task-owned Linux rebuild with trusted certificates and the remaining default
+  launcher limitation. ESLint support limitations remain documented below.
 - Initial repository inspection is complete.
 - `PROJECT_STATUS.md` and `AGENTS.md` have been reviewed and committed.
 - A proposed background-event architecture is documented in
@@ -1325,6 +1330,176 @@ reassess their consumers on subsequent Prisma updates.
   review found no required runtime call path for the audited RCE/MySQL issues;
   that does not prove the deployed artifact is safe. No Production, Neon, Vercel,
   Preview, schema change, new migration, commit, push, or deployment was used.
+
+### Timed planetary infrastructure — 2026-10-02
+
+#### Baseline and approved implementation
+
+- The task began with clean worktree/staging on `main`; HEAD and freshly fetched
+  `origin/main` both matched `4ed30fd` (`fix: remediate dependency security
+  advisories`). Dependency versions and scoped overrides remain unchanged.
+- `PROJECT_SPACE_INFRASTRUCTURE_CANON.md` records the owner's complete approved
+  rules. `lib/planet-infrastructure.js` is the shared frozen registry for all five
+  buildings, levels 0–5, costs, durations in integer seconds, completed Command
+  requirements, faction production and cumulative unit/ship unlocks. Existing
+  ground-unit names/keys/rosters are reused. Factory 90%/80% bonuses describe
+  future unit orders only; recruitment, ships, transport and combat are absent.
+- Every planet implicitly starts at Command 1 and other buildings 0. Starting
+  Materials remain zero, so unclaimed production cannot pay for the first
+  Extractor; the player must claim the first complete hour first.
+- `PlanetConstruction` stores the paid level transition, preceding/target level,
+  canonical cost, PostgreSQL-derived start and exact completion timestamp. It is
+  also the entire building history (at most 24 transitions per planet). Reads
+  derive completed levels without writes or background processing. Offline time
+  and late retries never move the saved effective timestamp.
+- Construction obtains User then owned Planet row locks, verifies the current
+  faction and planet incarnation, and derives price, next level and requirements
+  from trusted state. A single transaction debits stored Materials, creates the
+  transition and appends one negative Materials ledger row. No automatic claim
+  funds construction; different planets can hold overlapping work.
+- Forms accept exactly `planetId`, `infrastructureEpoch`, `buildingKey`,
+  `expectedLevel`, and an operation UUID, with string `$ACTION_` transport fields
+  ignored. Duplicates, uploads and other application fields fail. The operation
+  ID hashes authenticated owner + UUID. Matching retries return the same paid
+  order before busy/level checks, even after completion; conflicting intent
+  fails. A stale expected level cannot start the following upgrade.
+- `Planet.infrastructureEpoch` is a database-generated UUID per planet
+  incarnation. Reset deletes construction/history in the existing atomic reset,
+  and a recreated starter planet gets a different epoch despite reusing its ID.
+  Old forms cannot affect the new civilization. Authentication survives reset;
+  other owners' rows remain unchanged. Reset's strict confirmation parser also
+  permits string action metadata while rejecting files/duplicates/extra fields.
+- Detail and Command Center each use one RepeatableRead snapshot, authoritative
+  stored faction and one database clock captured after the first snapshot read.
+  Infrastructure and production use that same timestamp. Construction history
+  is queried separately and sequentially to avoid Prisma's parallel nested
+  relation SQL on a single pg transaction connection; no warning is suppressed.
+- Production integrates historical Extractor rates across the first claimable
+  whole hours (maximum 72) after the cursor. Exact `bigint` rate × milliseconds
+  arithmetic credits whole Materials and persists the fractional numerator in
+  `materialsProductionRemainder` (0–3,599,999). Ordinary cursor advancement,
+  capped reset to database time, and no-upgrade results are preserved. Over-cap
+  elapsed time is discarded, while fractional value inside the credited window
+  survives. Balance, cursor, remainder and positive ledger commit atomically.
+- The mobile planet view shows five completed levels, requirements, costs/times,
+  current effects, locked/unlocked future designs and active completion time.
+  Native build/upgrade forms and Refresh status work without JavaScript.
+  Command Center shows current rates and compact ongoing construction.
+
+#### Migration and isolated environment evidence
+
+- Exact SQL is in
+  [`20261002150000_add_planet_infrastructure/migration.sql`](prisma/migrations/20261002150000_add_planet_infrastructure/migration.sql).
+  It adds two Planet columns and one restricted-FK history table, with unique
+  planet/building/target-level and completion lookup indexes. Check constraints
+  restrict building keys, one-step level bounds, positive cost, timestamp order
+  and the fractional numerator. No old schema or migration was rewritten.
+- A dedicated PostgreSQL 18.6 tmpfs container/network was created for this task,
+  bound only to `127.0.0.1:55432`. Synthetic admin, runtime and migrator identities
+  were separate. Runtime role/database identity, absence of privileged role
+  attributes and database/schema CREATE rights were checked before verification.
+  Existing databases, containers and volumes were preserved.
+- The nine previous migrations were applied first. A synthetic pre-migration
+  user, named planet, `9007199254740993` balance, exact old cursor, ground-force
+  stack and both ledgers were saved. After applying the new migration, every
+  original column/row matched exactly, remainder was zero, epoch was a UUID and
+  construction history was empty. Those probe rows were removed.
+- A new task-owned Linux tooling image was built from the unchanged dependency
+  lock and pinned base image. A temporary BuildKit secret supplied the existing
+  Windows trusted CA bundle to npm through `NODE_EXTRA_CA_CERTS`. TLS verification
+  stayed enabled; no certificate store, dependency, Dockerfile or environment
+  file was changed. This resolves the previous task's certificate build blocker
+  for the verified image, without replacing the retained old tooling image.
+- The unchanged Compose entrypoint initially applied the baseline but its
+  hardener rejected translated `postgres:5432` URLs, since the local policy
+  requires `127.0.0.1:55432`. Verification then invoked the repository's exported
+  `runMigrationWorkflow` from the host, with Linux Prisma as its subprocess and
+  the unmodified standard hardener using the verified loopback migrator URL.
+  Baseline rerun and new migration both passed; `_prisma_migrations` remains
+  migrator-owned with zero effective runtime privileges. **The default Compose
+  launcher path still needs a separate address-boundary correction.** No URL or
+  database permission policy was weakened to make migration verification pass.
+
+#### Verification boundary
+
+- Final full run: **256 Node tests passed**, zero failures/skips, with
+  `RUN_MATERIALS_BROWSER_TESTS=1`, `MATERIALS_BROWSER_MODE=development` and
+  `node --test --test-concurrency=1 tests/*.test.mjs` against the verified local
+  restricted runtime role. Prisma Client generation, schema validation, lint
+  and the final optimized Next.js build passed.
+- After the final build, **6 browser tests passed** serially against `next
+  start`, zero failures/skips. Both development and production modes clicked
+  real Extractor build and Command upgrade forms with/without JavaScript:
+  hydrated POST 200, native POST 303, exact -10/-50 Materials above
+  Number.MAX_SAFE_INTEGER, one ledger per accepted order, busy feedback and
+  unchanged state on before/after-completion retries. The production build also
+  passed the existing Command Center and planet-detail Claim flows: exact +209,
+  retained partial hours, one ledger and no repeat credit.
+- The development hydrated browser waited for an actual **60-second Extractor**
+  against PostgreSQL time with every browser page closed. Saved rows were
+  unchanged across offline completion; reopening showed Extractor 1 and 22/hour
+  at the original saved finish time. No finalize command or worker ran. Long
+  upgrade completion tests used canonical-duration synthetic timestamp fixtures.
+- Mobile 390×844 checks passed without horizontal overflow. The captured mobile
+  planet screenshot was visually inspected. Both modes had zero browser runtime
+  or unexpected console errors; the earlier pg warning is absent from the final
+  run. Tests retain strict error assertions. Production uses Secure/HttpOnly/Lax
+  cookies and Chromium's trustworthy-loopback behavior with the required HTTPS
+  auth origin, without TLS or cookie exceptions; deployed HTTPS remains untested.
+- Focused pure and real-PostgreSQL tests cover all canon values/faction mappings,
+  initial state, exact completion boundaries, owner/faction gating, insufficient
+  stored balance, Command requirements, maximum levels, same-planet contention,
+  independent planets, concurrent Claim/build, identical/conflicting retries,
+  post-completion retries, and injected failure after debit/history writes.
+- Additional real transactions verify fractional carry, segmented claims,
+  first-72-hour caps, pending versus completed transitions, and rollback after
+  balance/cursor/remainder updates. Read snapshots remain unchanged. Reset tests
+  cover full rollback, other-owner/auth preservation and both deterministic
+  User-lock acquisition orders against construction, plus reused starter IDs.
+- The initial browser attempt exposed a regression-fixture issue: separately
+  rendered forms had different operation UUIDs, so they were different requests.
+  The corrected fixture reuses only the original rendered intent UUID in a
+  stale real form and clicks its actual submit button. It does not handcraft
+  FormData or action IDs. A second failure exposed pg's concurrent-query warning
+  from the additional nested relation; sequential snapshot history reads fixed
+  it. Browser console/error assertions remain strict.
+- Broader offline combat/shared-world ordering remains unresolved. Long build
+  durations are tested with isolated persisted time fixtures that preserve
+  canonical durations; no product duration is shortened. Local `next start`
+  evidence does not validate deployed HTTPS, external authentication providers,
+  or any external environment. No Production, Preview, Neon or Vercel access,
+  commit, push, external migration or deployment is part of this task.
+- Final cleanup verified zero users, auth rows, planets, construction records,
+  force stacks and both ledgers. The task container, network and updated task
+  image were removed; port 55432 is closed. Existing stopped containers and their
+  volumes/images remain intact. Environment-file hashes match the baseline.
+  Disposable scripts, credentials, CA export, screenshots and logs were removed.
+  Tracked diff checks and direct content/whitespace checks of all 13 new files
+  passed. HEAD remains `4ed30fd`, staging is empty; all 33 intended file changes
+  remain local and uncommitted.
+
+#### Changed files
+
+- Documentation: `PROJECT_SPACE_INFRASTRUCTURE_CANON.md`, `PROJECT_STATUS.md`,
+  `README.md`, `ARCHITECTURE.md`.
+- Domain and reads: `lib/planet-infrastructure.js`,
+  `lib/planet-infrastructure-state.js`, `lib/infrastructure-construction-policy.js`,
+  `lib/materials-production-policy.js`, `lib/materials-production-claim-policy.js`,
+  `lib/owned-planets-query.js`, `lib/civilization-overview-query.js`,
+  `lib/civilization-policy.js`, `lib/owned-planets.js`.
+- UI: `app/planets/planet-infrastructure.js`,
+  `app/planets/construction-feedback.js`, `app/planets/actions.js`,
+  `app/planets/[planetId]/page.js`, `app/civilization/page.js`, `app/globals.css`.
+- Database: `prisma/schema.prisma` and the new migration linked above.
+- New tests/helpers: `tests/infrastructure-canon.test.mjs`,
+  `tests/infrastructure-construction.test.mjs`,
+  `tests/infrastructure-production.test.mjs`, `tests/infrastructure-reset.test.mjs`,
+  `tests/infrastructure-browser.test.mjs`, `tests/browser-helpers.mjs`.
+- Existing regression updates: `tests/materials-production.test.mjs`,
+  `tests/materials-production-claim.test.mjs`,
+  `tests/materials-production-browser.test.mjs`,
+  `tests/civilization-command-center.test.mjs`, `tests/faction-lifecycle.test.mjs`,
+  `tests/planetary-forces.test.mjs`.
 
 ## Open decisions
 

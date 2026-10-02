@@ -74,18 +74,37 @@ model Verification {
 }
 
 model Planet {
-  id                        String                      @id
-  name                      String                      @default("Unnamed Planet") @db.VarChar(40)
-  materials                 BigInt                      @default(0) @db.BigInt
-  materialsProductionCursor DateTime                    @default(now()) @db.Timestamp(3)
-  ownerId                   String
-  owner                     User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  materialTransactions      PlanetMaterialTransaction[]
-  unitStacks                PlanetUnitStack[]
-  unitTransactions          PlanetUnitTransaction[]
+  id                           String                      @id
+  name                         String                      @default("Unnamed Planet") @db.VarChar(40)
+  materials                    BigInt                      @default(0) @db.BigInt
+  materialsProductionCursor    DateTime                    @default(now()) @db.Timestamp(3)
+  materialsProductionRemainder BigInt                      @default(0) @db.BigInt
+  infrastructureEpoch          String                      @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId                      String
+  owner                        User                        @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  materialTransactions         PlanetMaterialTransaction[]
+  unitStacks                   PlanetUnitStack[]
+  unitTransactions             PlanetUnitTransaction[]
+  constructions                PlanetConstruction[]
 
   @@index([ownerId])
   @@map("planet")
+}
+
+model PlanetConstruction {
+  id            String   @id
+  planetId      String
+  buildingKey   String   @db.VarChar(32)
+  fromLevel     Int
+  targetLevel   Int
+  startedAt     DateTime @db.Timestamp(3)
+  completesAt   DateTime @db.Timestamp(3)
+  materialsCost BigInt   @db.BigInt
+  planet        Planet   @relation(fields: [planetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([planetId, buildingKey, targetLevel], map: "planet_construction_level_key")
+  @@index([planetId, completesAt], map: "planet_construction_completion_idx")
+  @@map("planet_construction")
 }
 
 model PlanetUnitStack {

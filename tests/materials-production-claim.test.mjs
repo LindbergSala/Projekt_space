@@ -120,6 +120,7 @@ test("zero-hour claim locks user then planet, uses database time, and writes not
                 id: "planet",
                 materials: 99n,
                 materialsProductionCursor: currentTime,
+                materialsProductionRemainder: 0n,
               }]
             }
             return [{ currentTime }]
@@ -134,6 +135,7 @@ test("zero-hour claim locks user then planet, uses database time, and writes not
               assert.fail("zero-hour claim must not create a ledger row")
             },
           },
+          planetConstruction: { async findMany() { return [] } },
         })
       },
     },
