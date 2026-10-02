@@ -585,9 +585,11 @@ ownership, faction, time, production, or balances.
 
 The browser regression uses `playwright-core` with an installed Chrome browser
 (or `CLAIM_BROWSER_EXECUTABLE` pointing to a Chromium executable). It starts its
-own loopback-only Next.js development server, uses synthetic local accounts,
-and removes its fixtures afterward. Stop other development servers in this
-checkout first because Next.js uses the same development output directory.
+own loopback-only Next.js server, uses synthetic local accounts, and removes its
+fixtures afterward. The default mode is `development`; set
+`MATERIALS_BROWSER_MODE=production` to test an existing build with `next start`.
+Stop other development servers in this checkout first because Next.js uses the
+same development output directory.
 
 Set `DATABASE_URL` in the process to the verified local restricted application
 connection (`127.0.0.1:55432/projekt_space_dev`, role `projekt_space_app`). Do not
@@ -603,6 +605,9 @@ node --test --test-concurrency=1 tests/materials-production-browser.test.mjs
 node --test --test-concurrency=1 tests/*.test.mjs
 npm run lint
 npm run build
+$env:MATERIALS_BROWSER_MODE = "production"
+node --test --test-concurrency=1 tests/materials-production-browser.test.mjs
+Remove-Item Env:MATERIALS_BROWSER_MODE
 ```
 
 Database-dependent test files must run serially. The browser test is explicitly
@@ -610,6 +615,18 @@ skipped unless `RUN_MATERIALS_BROWSER_TESTS=1`. It clicks actual Claim buttons i
 both Command Center and planet detail, with and without JavaScript, checks the
 real POST and refreshed UI, and verifies exact balance/cursor/ledger changes
 and immediate stale-form retries against PostgreSQL.
+
+Both modes also check signup and login through the real auth API, session-cookie
+attributes, signed-out account protection, and server-directed entry for a new
+player, a faction without planets, and an established civilization. Production
+mode keeps `NODE_ENV=production`, the required HTTPS auth origin, and Secure
+session cookies. Its API setup sends that configured origin while Chrome visits
+the loopback HTTP listener, where Chromium supports Secure cookies without a TLS
+exception. No certificate validation, auth setting, or cookie flag is weakened.
+This verifies production-build Claim behavior; it does not verify HTTPS transport
+or browser login/registration forms. Build separately with verified local,
+process-scoped database and auth settings before running production mode; never
+let a build or test inherit a remote database URL from an environment file.
 
 ## Per-planet planetary forces
 

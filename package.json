@@ -19,15 +19,23 @@
     "@prisma/client": "7.10.0",
     "better-auth": "1.7.4",
     "dotenv": "17.4.2",
-    "next": "16.3.4",
+    "next": "16.3.8",
     "pg": "8.23.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
   "devDependencies": {
     "eslint": "9.39.4",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.3.8",
     "playwright-core": "1.63.0",
     "prisma": "7.10.0"
+  },
+  "overrides": {
+    "@prisma/config@7.10.0": {
+      "deepmerge-ts": "8.0.2"
+    },
+    "prisma@7.10.0": {
+      "mysql2": "3.23.1"
+    }
   }
 }

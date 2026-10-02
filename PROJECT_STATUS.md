@@ -33,6 +33,11 @@ The Codex repository inspection recorded the following verified checkpoint:
 
 ## Current progress
 
+- The 2026-10-02 dependency security remediation below supersedes earlier
+  unresolved npm-audit checkpoints: all eight advisories in the fresh baseline
+  are addressed locally, and both final audit variants return zero findings.
+  This has not been deployed. Linux tooling-image rebuild and ESLint support
+  limitations remain explicitly documented below.
 - Initial repository inspection is complete.
 - `PROJECT_STATUS.md` and `AGENTS.md` have been reviewed and committed.
 - A proposed background-event architecture is documented in
@@ -1128,6 +1133,198 @@ creation, and runtime database access remain pending.
 - This establishes a local parser cause, not the cause of the specific reported
   Production request or digest `2629603541`. No Production, Neon, or Vercel
   access, commit, push, or deployment was performed.
+
+### Dependency security review and local remediation — 2026-10-02
+
+#### Baseline and bounded changes
+
+- `main`, HEAD, and `origin/main` were all
+  `090df9ae96cdf698abcbfe50545d24b2faa0bf25`, including after the read-only
+  `git fetch origin main`. Staging and the working tree were clean. The existing
+  Materials claim fix was the baseline; no application, authorization, economy,
+  schema, migration, or environment file was changed in this task.
+- Direct `next` and `eslint-config-next` pins changed from `16.3.4` to `16.3.8`.
+  Their matching Next.js dependencies changed with them. React and React DOM
+  remain exactly `19.2.7`; Node remains `24.x`; all direct versions remain exact.
+  Registry peer/engine requirements and the completed tests support this pairing.
+- Targeted npm resolution refreshed `brace-expansion` from `1.1.18` to `1.1.21`
+  and `5.0.9` to `5.0.12`, plus `fast-uri` from `3.1.7` to `3.1.8`. These patches
+  satisfy the existing minimatch and Ajv dependency ranges without overrides.
+- Two exact parent-scoped overrides address Prisma's pinned vulnerable leaves:
+  `@prisma/config@7.10.0 -> deepmerge-ts@8.0.2` and
+  `prisma@7.10.0 -> mysql2@3.23.1`. CLI, client, PostgreSQL adapter, and config
+  remain `7.10.0`. npm generated the lockfile; no forced audit fix, general
+  latest upgrade, manual lockfile editing, or package removal was used.
+  `sql-escaper` replaces `sqlstring`/`seq-queue` as declared by the newer mysql2.
+- The changed file set is `package.json`, `package-lock.json`,
+  `tests/prisma-config.test.mjs`, `tests/materials-production-browser.test.mjs`,
+  `README.md`, and `PROJECT_STATUS.md`. README changes describe the new test
+  mode. No changes were staged, committed, pushed, or deployed.
+
+#### Audit evidence and unique advisories
+
+Both initial audit commands completed normally with exit code 1 for findings,
+not a network/tool error. Both final commands returned exit code 0. The fresh
+full baseline had eight unique advisory IDs; the omitted-dev baseline had five.
+`@prisma/config` and `prisma` were propagated findings, not additional advisories.
+
+| Audit command | Before: affected packages | Before: severity counts | After |
+| --- | --- | --- | --- |
+| `npm audit --json` | 7 | 1 critical, 5 high, 1 moderate | 0 findings |
+| `npm audit --omit=dev --json` | 6 | 1 critical, 4 high, 1 moderate | 0 findings |
+
+The table records ranges relevant to the installed release lines. Every listed
+baseline advisory is addressed by the installed after-version; the first fixed
+version can differ from the selected maintained patch.
+
+| Package: before -> after | Advisory / CVE | Affected range; first verified fix | Required conditions and local assessment |
+| --- | --- | --- | --- |
+| `next`: `16.3.4 -> 16.3.8` | [GHSA-vcvr-r3jv-pc5j](https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j); no known CVE in the advisory | `>=16.2.0 <16.3.6`; `16.3.6` | Runtime RCE requires Node `next/og` ImageResponse rendering attacker-controlled SVG content/attributes/styles. No such import or metadata-image route exists in this repository. The vulnerable dependency was nevertheless replaced. |
+| `brace-expansion`: `1.1.18 / 5.0.9 -> 1.1.21 / 5.0.12` | [GHSA-q2hr-2g5m-vwhr](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr) / CVE-2026-102277 | `<1.1.21`, `>=4.0.0 <5.0.12`; `1.1.21 / 5.0.12` | Quadratic expansion requires hostile brace/glob input. Lint/CI/development tooling can process untrusted repository patterns; no application request path was found. |
+| Same brace versions | [GHSA-qhr7-859c-m2p7](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-qhr7-859c-m2p7) / CVE-2026-102278 | `<1.1.20`, `>=4.0.0 <5.0.11`; `1.1.20 / 5.0.11` | Nested hostile brace groups can exhaust the stack on the same lint-tool paths. |
+| Same brace versions | [GHSA-6j4f-fj2g-mc7p](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-6j4f-fj2g-mc7p) / CVE-2026-102276 | `<1.1.19`, `>=4.0.0 <5.0.10`; `1.1.19 / 5.0.10` | Hostile comma-group parsing can exhaust the stack on the same lint-tool paths. |
+| `deepmerge-ts`: `7.1.5 -> 8.0.2` | [GHSA-ggr8-5vv4-36mx](https://github.com/RebeccaStevens/deepmerge-ts/security/advisories/GHSA-ggr8-5vv4-36mx) / CVE-2026-40345 | `<8.0.0`; `8.0.0` | Recursive attacker-controlled object graphs can exhaust the stack. Prisma configuration runs during CLI/generation/install/build; the repository supplies trusted plain objects/strings, not recursive graphs. Ordinary JSON cannot encode those cycles. |
+| `mysql2`: `3.15.3 -> 3.23.1` | [GHSA-3f6p-5ww8-9rcr](https://github.com/advisories/GHSA-3f6p-5ww8-9rcr); no known CVE in the advisory | `<3.22.0`; `3.22.0` | Malicious/compromised MySQL server or MITM can request a cleartext authentication downgrade. The application uses PostgreSQL via PrismaPg, not MySQL. |
+| Same mysql2 versions | [GHSA-rgwj-5xj2-c3m3](https://github.com/advisories/GHSA-rgwj-5xj2-c3m3); no known CVE in the advisory | `<=3.23.0`; `3.23.1` | Malicious compressed MySQL traffic can cause unbounded decompression; requires a MySQL connection with compression enabled. That path is absent from this PostgreSQL application. |
+| `fast-uri`: `3.1.7 -> 3.1.8` | [GHSA-hrr3-gc8f-f4qj](https://github.com/fastify/fast-uri/security/advisories/GHSA-hrr3-gc8f-f4qj) / CVE-2026-86472 | `>=3.0.0 <3.1.8`; `3.1.8` | An encoded hostname octet in a scheme-relative URI can evade case-sensitive host policies. Present in Prisma local-streams tooling through Ajv; no affected hostname decision or application import was found. |
+
+`npm explain` for every affected package and `npm ls` before/after established
+these paths (versions at the baseline):
+
+- Direct `next@16.3.4`: runtime, build, and local development.
+- `eslint@9.39.4 -> minimatch@3.1.5 -> brace-expansion@1.1.18`, also through
+  ESLint's config packages and the Next ESLint import/react/jsx-a11y plugins:
+  lint/CI/development, not application imports.
+- `eslint-config-next@16.3.4 -> typescript-eslint@8.70.0 ->
+  @typescript-eslint/typescript-estree@8.70.0 -> minimatch@10.2.6 ->
+  brace-expansion@5.0.9`: lint/CI/development.
+- `prisma@7.10.0 -> @prisma/config@7.10.0 -> deepmerge-ts@7.1.5`:
+  configuration loading and generation in local CLI/install/build.
+- `prisma@7.10.0 -> mysql2@3.15.3`: CLI Studio's MySQL executor; also a
+  deduplicated optional `better-auth@1.7.4` peer. The runtime Better Auth setup
+  explicitly uses the Prisma PostgreSQL adapter.
+- `prisma@7.10.0 -> @prisma/dev@0.24.17 -> @prisma/streams-local@0.1.11 ->
+  ajv@8.20.0 -> fast-uri@3.1.7`: local Prisma tooling installed with the CLI.
+
+Prisma and its leaves are retained in the omitted-dev audit through optional
+runtime peer relationships from Prisma Client and Better Auth. Thus neither
+their devDependency declaration nor their presence in that audit establishes
+runtime reachability. Install/build/tooling inputs were assessed separately.
+Final `npm ls` passed and `npm explain` confirmed only the corrected copies.
+
+#### Patch selection, overrides, and additional Next.js fixes
+
+[Next.js 16.3.6](https://github.com/vercel/next.js/releases/tag/v16.3.6) fixes the
+audited RCE. The selected [16.3.8 release](https://github.com/vercel/next.js/releases/tag/v16.3.8)
+also includes seven further security fixes below. It stays within the current
+16.3 patch line and [16.x Active LTS](https://nextjs.org/support-policy).
+These seven advisories were absent from the fresh npm audit response and are
+not included in the audit counts above. Several maintainer records contain
+literal `16.3.?` placeholders or only the singleton `16.3.0`; their exact affected
+upper bounds remain unpublished. The explicit 16.3.8 release listing is the
+fix evidence; no missing version interval is inferred.
+
+| Additional fixed advisory / CVE | Published affected metadata for 16.x | Local prerequisite assessment |
+| --- | --- | --- |
+| [GHSA-cjq9-62q9-8jv4](https://github.com/vercel/next.js/security/advisories/GHSA-cjq9-62q9-8jv4) / CVE-2026-94483 | `>=16.0.0 <16.3.?` | Image SSRF requires remote image patterns; no `images.remotePatterns` or `next/image` use found. |
+| [GHSA-f87g-xv8r-7p7x](https://github.com/vercel/next.js/security/advisories/GHSA-f87g-xv8r-7p7x) / CVE-2026-94485 | `>=16.0.0`; patch placeholder `16.3.?` | Requires webpack metadata-image routes and dynamicParams restrictions; these are absent, and this build uses Turbopack. |
+| [GHSA-4jqv-mc3x-m676](https://github.com/vercel/next.js/security/advisories/GHSA-4jqv-mc3x-m676) / CVE-2026-94543 | `>=16.0.0`; patch placeholder `16.3.?` | Self-hosted Pages Router SSG/ISR poisoning; this application uses App Router. |
+| [GHSA-mcj8-r9mp-w47p](https://github.com/vercel/next.js/security/advisories/GHSA-mcj8-r9mp-w47p) / CVE-2026-94484 | `>=16.0.0`; patch placeholder `16.3.?` | Requires root catch-all pages with SSG/ISR; no such page exists. The auth API catch-all is not that page pattern. |
+| [GHSA-3w37-wq28-93x7](https://github.com/vercel/next.js/security/advisories/GHSA-3w37-wq28-93x7) / CVE-2026-94544 | `16.3.0`; patch placeholder `16.3.?` | Draft Mode cache leakage requires Cache Components/useCache and draft-dependent caching; absent here. |
+| [GHSA-h694-7cp9-m8p3](https://github.com/vercel/next.js/security/advisories/GHSA-h694-7cp9-m8p3) / CVE-2026-103004 | `16.3.0`; patch `16.3.8` | Nested cache functions and root-parameter cache keys are not used. |
+| [GHSA-39w2-rjm5-chcv](https://github.com/vercel/next.js/security/advisories/GHSA-39w2-rjm5-chcv) / CVE-2026-94486 | `>=16.0.0`; patch placeholder `16.3.?` | Relevant local-development origin-check weakness in the MCP endpoint. `next dev` is used; loopback binding does not itself protect against a malicious page in the developer's browser. The production server does not serve this endpoint. |
+
+There is no corrected stable Prisma 7 parent in the registry: 7.10.0 pins the
+vulnerable leaves. The CLI's newer `8.0.0-rc.19` is a prerelease with restructured
+tooling, while client/config remain 7.10.0; Better Auth's Prisma peers accept
+only major 5/6/7. Neither that restructuring nor audit's proposed downgrade to
+6.19.3 is an appropriate bounded correction. The
+[Prisma 7.10 release](https://github.com/prisma/orm/releases/tag/7.10.0)
+describes its distinct Prisma 8/7 tooling arrangement.
+
+The deepmerge major override is justified only for this verified consumer:
+`@prisma/config` imports `deepmerge` as c12's merger; the repository config uses
+plain object/string fields. The [8.0 breaking changes](https://github.com/RebeccaStevens/deepmerge-ts/releases/tag/v8.0.0)
+concern Map merging, type names, and `deepmergeInto` behavior, none of which this
+path uses. [8.0.2](https://github.com/RebeccaStevens/deepmerge-ts/releases/tag/v8.0.2)
+retains ESM/CJS exports and supports Node >=16.9. New regression checks execute
+the real c12/Prisma loader, confirm schema/main/migration/shadow selection, and
+retain URL mismatch and non-disclosure assertions. Actual generation and schema
+validation also passed. This does not claim all deepmerge 7 callers are compatible.
+
+The mysql2 override stays within major 3 and Better Auth's optional `^3.0.0`
+peer. Prisma's observed Studio path dynamically imports `mysql2/promise` and
+uses `createPool` and pool shutdown; those APIs/export paths remain present.
+[3.22.0](https://github.com/sidorares/node-mysql2/releases/tag/v3.22.0) and
+[3.23.1](https://github.com/sidorares/node-mysql2/releases/tag/v3.23.1) explicitly
+  document the respective fixes. Older maintainer advisory pages still say no
+  patched version; the reviewed GitHub advisories and those release notes resolve
+  that discrepancy. The promise-pool creation/shutdown API was smoke-tested
+  without connecting. No real MySQL connection was used or claimed as tested.
+Remove both scoped overrides when a corrected compatible Prisma parent exists;
+reassess their consumers on subsequent Prisma updates.
+
+#### Local verification and remaining limitations
+
+- `npm ci` passed on Windows Node `24.21.0` / npm `11.19.0` using the updated
+  lockfile. Process-scoped Node system-CA support used the existing trusted
+  certificate store; no TLS verification, certificate store, auth setting,
+  persistent npm setting, or environment file was changed. The expected
+  non-Vercel Prisma generation skip remained intact. Existing install-script
+  policy notices were not overridden.
+- Prisma Client `7.10.0` generation and `prisma validate` passed with explicit
+  safe local process configuration. The new actual-loader cases and existing
+  Prisma URL/permission/migration-wrapper protections passed.
+- All **213 Node tests passed serially** with
+  `RUN_MATERIALS_BROWSER_TESTS=1`, `MATERIALS_BROWSER_MODE=development`, and
+  `--test-concurrency=1`: zero failures or skips. A transient config-test attempt
+  during npm ci saw the incomplete node_modules tree; the focused 13-test rerun
+  and the later full suite both passed after installation completed.
+- `npm run lint` and `npm run build` passed. The browser regression then passed
+  separately against `next start` with `MATERIALS_BROWSER_MODE=production`
+  (**3 tests**, zero failures/skips). Both modes cover real Chrome clicks at
+  390x844 on both claim forms with and without JavaScript: hydrated POST 200,
+  native POST 303, exact +209 Materials above Number.MAX_SAFE_INTEGER, retained
+  partial-hour progress, exactly one ledger row, and unchanged balance/cursor/
+  ledger after an immediate stale-form retry.
+- The same browser setup verifies synthetic registration and login through the
+  real auth API, signed-out account protection, and all three authenticated
+  root-entry destinations. Production-mode session cookies remain Secure,
+  HttpOnly, Lax, and `__Secure-` prefixed. Production tests use Chromium's
+  trustworthy-loopback HTTP behavior with a configured HTTPS auth origin and
+  API Origin header. No cookie rewriting or TLS bypass is used. This verifies
+  `next start` behavior, not HTTPS transport, deployment configuration, or the
+  browser's login/registration forms. Existing faction/reset/ownership and
+  transaction integration tests cover those server-side boundaries.
+- A separate rebuild of the unchanged Linux Prisma-tooling Dockerfile was
+  attempted under a task-specific image tag. Its npm download failed with
+  `UNABLE_TO_VERIFY_LEAF_SIGNATURE`; the Linux image lacks the required trusted
+  npm TLS chain in this environment. TLS/certificate protections were preserved.
+  **The updated Linux tooling image and real migration-wrapper execution in it
+  are not verified.** Rebuild in an environment with a valid trusted TLS chain,
+  then repeat config/generation and wrapper verification before relying on that
+  image. The existing tooling image was not replaced.
+- [ESLint 9 reached EOL on 2026-08-06](https://eslint.org/version-support/).
+  It remains exactly 9.39.4 with no final audit advisory, but future upstream
+  maintenance is a residual tooling risk. The installed import/react/jsx-a11y
+  plugins' peer ranges do not accept ESLint 10; migrating the lint stack needs
+  a separate compatibility change rather than an unrelated major upgrade here.
+- All database work used a separate task-owned PostgreSQL 18.6 container bound
+  to `127.0.0.1:55432` with synthetic credentials and only existing migrations.
+  The runtime identity and absence of superuser/role/database/schema-creation
+  privileges were verified. Existing databases, containers, and volumes were
+  preserved. Cleanup checks confirmed zero users, sessions, accounts, planets,
+  unit stacks, and both ledgers before removal of the temporary instance.
+  Container removal, closed port 55432, and absence of the failed build's task
+  image tag were independently verified. Environment-file hashes matched the
+  baseline. Task scripts, synthetic credential state, and disposable logs were
+  removed; final whitespace checks passed and no untracked files remained.
+- Zero audit findings is a point-in-time result, not a claim of a vulnerability-
+  free project. Production was neither accessed nor updated, so the deployed
+  dependency state and exploitability remain unverified. The local source
+  review found no required runtime call path for the audited RCE/MySQL issues;
+  that does not prove the deployed artifact is safe. No Production, Neon, Vercel,
+  Preview, schema change, new migration, commit, push, or deployment was used.
 
 ## Open decisions
 

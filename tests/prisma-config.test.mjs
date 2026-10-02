@@ -5,8 +5,10 @@ import test from "node:test"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url))
+const ROOT_DIRECTORY = path.resolve(TEST_DIRECTORY, "..")
+const CONFIG_PATH = path.join(ROOT_DIRECTORY, "prisma.config.mjs")
 const CONFIG_URL = pathToFileURL(
-  path.resolve(TEST_DIRECTORY, "../prisma.config.mjs"),
+  CONFIG_PATH,
 ).href
 const MAIN_URL =
   "postgresql://app:synthetic-password@127.0.0.1:55432/projekt_space_dev"
@@ -23,16 +25,28 @@ function runConfigCheck({
   databaseUrl = MAIN_URL,
   migrationDatabaseUrl = "",
   shadowDatabaseUrl = "",
+  loadThroughPrisma = false,
 } = {}, expression = "") {
+  const loadConfig = loadThroughPrisma
+    ? `const { loadConfigFromFile } = await import("@prisma/config");
+       const loaded = await loadConfigFromFile({
+         configFile: ${JSON.stringify(CONFIG_PATH)},
+         configRoot: ${JSON.stringify(ROOT_DIRECTORY)},
+       });
+       if (loaded.error) throw loaded.error.error;
+       const config = loaded.config;`
+    : `const { default: config } = await import(${JSON.stringify(CONFIG_URL)});`
+
   return spawnSync(
     process.execPath,
     [
       "--input-type=module",
       "--eval",
-      `const { default: config } = await import(${JSON.stringify(CONFIG_URL)}); ${expression}`,
+      `${loadConfig} ${expression}`,
     ],
     {
       encoding: "utf8",
+      cwd: ROOT_DIRECTORY,
       env: {
         ...process.env,
         DATABASE_URL: databaseUrl,
@@ -43,6 +57,59 @@ function runConfigCheck({
     },
   )
 }
+
+test("Prisma's config loader preserves the schema and selected database URLs", () => {
+  for (const urls of [
+    {},
+    { shadowDatabaseUrl: SHADOW_URL },
+    { migrationDatabaseUrl: MIGRATION_URL, shadowDatabaseUrl: SHADOW_URL },
+  ]) {
+    const expectedDatasource = {
+      url: urls.migrationDatabaseUrl ?? MAIN_URL,
+      ...(urls.shadowDatabaseUrl === undefined
+        ? {}
+        : { shadowDatabaseUrl: urls.shadowDatabaseUrl }),
+    }
+    const result = runConfigCheck(
+      { ...urls, loadThroughPrisma: true },
+      `const { default: assert } = await import("node:assert/strict");
+       assert.equal(loaded.resolvedPath, ${JSON.stringify(CONFIG_PATH)});
+       assert.equal(config.schema, ${JSON.stringify(path.join(ROOT_DIRECTORY, "prisma/schema.prisma"))});
+       assert.deepEqual(config.datasource, ${JSON.stringify(expectedDatasource)});`,
+    )
+
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, "")
+    assert.equal(result.stderr, "")
+  }
+})
+
+test("Prisma's config loader rejects incompatible targets without leaking URLs", () => {
+  const cases = [
+    {
+      migrationDatabaseUrl: MIGRATION_URL.replace(
+        "projekt_space_dev",
+        "unexpected_database",
+      ),
+      shadowDatabaseUrl: SHADOW_URL,
+      message: /DATABASE_URL and MIGRATION_DATABASE_URL must identify the same database/,
+    },
+    {
+      migrationDatabaseUrl: MIGRATION_URL,
+      shadowDatabaseUrl: MAIN_URL,
+      message: /DATABASE_URL and SHADOW_DATABASE_URL must identify different databases/,
+    },
+  ]
+
+  for (const { message, ...urls } of cases) {
+    const result = runConfigCheck({ ...urls, loadThroughPrisma: true })
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, message)
+    assert.doesNotMatch(result.stderr, /postgres(?:ql)?:\/\/|synthetic-password/)
+    assert.equal(result.stdout, "")
+  }
+})
 
 test("Prisma config keeps the shadow URL optional", () => {
   const result = runConfigCheck(

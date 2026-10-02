@@ -26,21 +26,28 @@ async function unusedPort() {
 }
 
 async function startLocalServer(databaseUrl, t) {
+  const mode = process.env.MATERIALS_BROWSER_MODE || "development"
+  assert.ok(["development", "production"].includes(mode),
+    "MATERIALS_BROWSER_MODE must be development or production")
   const port = await unusedPort()
   const origin = `http://127.0.0.1:${port}`
+  // Production keeps its HTTPS auth-origin policy and Secure cookies. Chromium
+  // treats loopback as trustworthy; no certificate or cookie protection changes.
+  // This checks next start behavior, not deployment TLS or browser auth forms.
+  const authOrigin = mode === "production" ? `https://127.0.0.1:${port}` : origin
   const server = spawn(process.execPath, [
-    "node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1",
+    "node_modules/next/dist/bin/next", mode === "production" ? "start" : "dev", "--hostname", "127.0.0.1",
     "--port", String(port),
   ], {
     cwd: ROOT_DIRECTORY,
     windowsHide: true,
     env: {
       ...process.env,
-      NODE_ENV: "development",
+      NODE_ENV: mode,
       DATABASE_URL: databaseUrl,
       MIGRATION_DATABASE_URL: "",
       SHADOW_DATABASE_URL: "",
-      BETTER_AUTH_URL: origin,
+      BETTER_AUTH_URL: authOrigin,
       BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
       GOOGLE_CLIENT_ID: "",
       GOOGLE_CLIENT_SECRET: "",
@@ -77,7 +84,7 @@ async function startLocalServer(databaseUrl, t) {
     server.once("error", () => { clearTimeout(timer); reject(new Error("Local Next.js failed to start.")) })
     server.once("exit", () => { clearTimeout(timer); reject(new Error("Local Next.js exited before ready.")) })
   })
-  return { origin, output: () => output }
+  return { origin, authOrigin, mode, output: () => output }
 }
 
 test("real Materials claim forms preserve exact balances and retry safety", {
@@ -107,16 +114,39 @@ test("real Materials claim forms preserve exact balances and retry safety", {
     await t.test(javaScriptEnabled ? "hydrated browser" : "browser without JavaScript", async () => {
       const context = await browser.newContext({ javaScriptEnabled, viewport: { width: 390, height: 844 } })
       const email = `claim-browser-${randomUUID()}@example.invalid`
+      const password = randomUUID() + randomUUID()
       let ownerId
       const planetIds = [randomUUID(), randomUUID()]
       try {
+        const entryPage = await context.newPage()
+        await entryPage.goto(`${server.origin}/account`)
+        assert.equal(new URL(entryPage.url()).pathname, "/login", "signed-out account must be protected")
         const signup = await context.request.post(`${server.origin}/api/auth/sign-up/email`, {
-          headers: { origin: server.origin },
-          data: { name: "Synthetic Claim Player", email, password: randomUUID() + randomUUID() },
+          headers: { origin: server.authOrigin },
+          data: { name: "Synthetic Claim Player", email, password },
         })
         assert.equal(signup.status(), 200, "synthetic local signup must succeed")
         ownerId = (await signup.json()).user.id
+        await entryPage.goto(server.origin)
+        assert.equal(new URL(entryPage.url()).pathname, "/faction", "new player entry must require faction selection")
+
+        await context.clearCookies()
+        const signin = await context.request.post(`${server.origin}/api/auth/sign-in/email`, {
+          headers: { origin: server.authOrigin },
+          data: { email, password },
+        })
+        assert.equal(signin.status(), 200, "synthetic local signin must succeed")
+        assert.equal((await signin.json()).user.id, ownerId)
+        const sessionCookie = (await context.cookies()).find((cookie) => cookie.name.endsWith("better-auth.session_token"))
+        assert.ok(sessionCookie, "authentication must issue its session cookie")
+        assert.equal(sessionCookie.httpOnly, true)
+        assert.equal(sessionCookie.sameSite, "Lax")
+        assert.equal(sessionCookie.secure, server.mode === "production")
+        if (server.mode === "production") assert.ok(sessionCookie.name.startsWith("__Secure-"))
+
         await prisma.user.update({ where: { id: ownerId }, data: { factionKey: "orthevan-directorate" } })
+        await entryPage.goto(server.origin)
+        assert.equal(new URL(entryPage.url()).pathname, "/planets", "faction player entry must require a first planet")
         const [{ currentTime }] = await prisma.$queryRaw`SELECT clock_timestamp() AS "currentTime"`
         const cursor = new Date(currentTime.getTime() - 19.5 * HOUR)
         const startingBalance = 9_007_199_254_740_993n
@@ -124,6 +154,9 @@ test("real Materials claim forms preserve exact balances and retry safety", {
           id, ownerId, name: "Synthetic Claim Planet", materials: startingBalance,
           materialsProductionCursor: cursor,
         })) })
+        await entryPage.goto(server.origin)
+        assert.equal(new URL(entryPage.url()).pathname, "/civilization", "established player entry must reach Command Center")
+        await entryPage.close()
 
         for (const [index, route] of ["/civilization", `/planets/${planetIds[1]}`].entries()) {
           const page = await context.newPage()
@@ -197,7 +230,7 @@ test("real Materials claim forms preserve exact balances and retry safety", {
           assert.deepEqual(await prisma.planet.findUnique({ where: { id: planetIds[index] }, select }), after)
           assert.deepEqual(await prisma.planetMaterialTransaction.findMany({ where: { planetId: planetIds[index] } }), ledger)
           assert.deepEqual(errors, [], "claim flow must have no browser runtime or console errors")
-          console.log(`${javaScriptEnabled ? "Hydrated" : "Native"} ${route.startsWith("/planets/") ? "planet detail" : "Command Center"}: POST ${response.status()}, +209 exact Materials, one ledger row, stale retry unchanged.`)
+          console.log(`${server.mode}: ${javaScriptEnabled ? "Hydrated" : "Native"} ${route.startsWith("/planets/") ? "planet detail" : "Command Center"}: POST ${response.status()}, +209 exact Materials, one ledger row, stale retry unchanged.`)
           await retryPage.close()
           await page.close()
         }
