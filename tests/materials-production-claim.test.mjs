@@ -55,6 +55,51 @@ test("claim form parsing accepts exactly one valid planet id", () => {
   }
 })
 
+test("claim parsing ignores action metadata and returns only the application planet id", () => {
+  for (const metadataFirst of [true, false]) {
+    const formData = new FormData()
+    if (!metadataFirst) formData.append("planetId", "planet-owned")
+    formData.append("$ACTION_ID_synthetic", "")
+    formData.append("$ACTION_REF_synthetic", "")
+    formData.append("$ACTION_synthetic:0", '{"id":"synthetic","bound":null}')
+    formData.append("$ACTION_ownerId", "other-owner")
+    formData.append("$ACTION_planetId", "other-planet")
+    formData.append("$ACTION_balanceAfter", "999999999999999999")
+    formData.append("$ACTION_claimableMaterials", "999999")
+    if (metadataFirst) formData.append("planetId", "planet-owned")
+    assert.deepEqual(readStrictMaterialsProductionClaim(formData), {
+      planetId: "planet-owned",
+    })
+  }
+})
+
+test("metadata never relaxes claim validation or permits uploaded files", () => {
+  const invalidEntries = [
+    [],
+    [["$ACTION_planetId", "planet-owned"]],
+    [["planetId", ""]],
+    [["planetId", " planet-owned"]],
+    [["planetId", "planet-owned "]],
+    [["planetId", "x".repeat(129)]],
+    [["planetId", new File(["planet-owned"], "planet.txt")]],
+    [["planetId", "planet-owned"], ["planetId", "planet-owned"]],
+    [["planetId", "planet-owned"], ["planetId", "other-planet"]],
+    [["planetId", "planet-owned"], ["$ACTION_file", new File(["ignored"], "metadata.txt")]],
+    ...["ownerId", "factionKey", "materials", "balanceAfter", "ratePerHour",
+      "claimableMaterials", "currentTime", "materialsProductionCursor", "returnTo",
+      "$ACTION", "$action_ID_synthetic", "prefix$ACTION_ID_synthetic",
+    ].map((name) => [["planetId", "planet-owned"], [name, "untrusted"]]),
+  ]
+  for (const entries of invalidEntries) {
+    const formData = new FormData()
+    formData.append("$ACTION_ID_synthetic", "")
+    for (const [name, value] of entries) formData.append(name, value)
+    assert.throws(() => readStrictMaterialsProductionClaim(formData), {
+      message: MATERIALS_PRODUCTION_CLAIM_ERROR,
+    })
+  }
+})
+
 test("zero-hour claim locks user then planet, uses database time, and writes nothing", async () => {
   const currentTime = new Date("2026-10-01T12:00:00.000Z")
   const calls = []

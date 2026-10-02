@@ -576,6 +576,41 @@ one existing `PlanetMaterialTransaction` ledger row atomically. A claim with no
 completed hour is a no-op. No cron job, queue, polling loop, or background
 worker is involved.
 
+### Local Materials claim regression checks
+
+Claim parsing accepts exactly one valid `planetId` application field and ignores
+React's reserved `$ACTION_` transport fields. Duplicate planet IDs, additional
+application fields, and file values are rejected. Metadata never supplies
+ownership, faction, time, production, or balances.
+
+The browser regression uses `playwright-core` with an installed Chrome browser
+(or `CLAIM_BROWSER_EXECUTABLE` pointing to a Chromium executable). It starts its
+own loopback-only Next.js development server, uses synthetic local accounts,
+and removes its fixtures afterward. Stop other development servers in this
+checkout first because Next.js uses the same development output directory.
+
+Set `DATABASE_URL` in the process to the verified local restricted application
+connection (`127.0.0.1:55432/projekt_space_dev`, role `projekt_space_app`). Do not
+load an environment file unless its database target has been checked. The test
+rejects remote targets before connecting and overrides authentication settings
+for its own server without changing environment files.
+
+Run in PowerShell, with that local process connection already configured:
+
+```powershell
+$env:RUN_MATERIALS_BROWSER_TESTS = "1"
+node --test --test-concurrency=1 tests/materials-production-browser.test.mjs
+node --test --test-concurrency=1 tests/*.test.mjs
+npm run lint
+npm run build
+```
+
+Database-dependent test files must run serially. The browser test is explicitly
+skipped unless `RUN_MATERIALS_BROWSER_TESTS=1`. It clicks actual Claim buttons in
+both Command Center and planet detail, with and without JavaScript, checks the
+real POST and refreshed UI, and verifies exact balance/cursor/ledger changes
+and immediate stale-form retries against PostgreSQL.
+
 ## Per-planet planetary forces
 
 Each planet can store nonnegative `BIGINT` quantities for canonical planetary

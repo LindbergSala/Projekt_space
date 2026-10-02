@@ -1082,6 +1082,53 @@ creation, and runtime database access remain pending.
   environment. No Neon, Vercel, deployment, commit, or push operation was
   performed.
 
+### Materials claim form metadata correction — 2026-10-02
+
+- A real local Chrome click on `Claim 209 Materials` in the hydrated Command
+  Center reproduced HTTP 500 before the correction. The Next.js server stack
+  identified `readStrictMaterialsProductionClaim`, which runs before the
+  authenticated claim transaction. React's `$ACTION_` form metadata was counted
+  as an extra application field. Native browser submissions without JavaScript
+  already succeeded on both pages, demonstrating the transport-dependent
+  difference rather than a reproduced transaction failure.
+- The parser now excludes the reserved `$ACTION_` transport namespace from
+  application-field counting and returns only the validated planet ID. Exactly
+  one valid `planetId` is still required; duplicate IDs, additional application
+  fields, lookalike metadata prefixes, and file values (including metadata file
+  values) fail with the existing generic error. No transaction, session,
+  ownership, lock order, database-time, production, or economy rule changed.
+- `playwright-core` is a pinned development-only dependency for the opt-in
+  browser regression. At a 390×844 viewport, real Chrome clicks now pass on
+  Command Center and planet detail, with hydrated POST 200 and native POST 303.
+  The tests inspect actual framework metadata and the refreshed UI, and verify
+  exactly 209 credited Materials, the preserved partial hour, and one ledger
+  row with balances above `Number.MAX_SAFE_INTEGER`. Immediate retries from
+  already-open stale forms leave balance, cursor, and ledger unchanged. Mobile
+  screenshots were also inspected. The unrelated existing `/favicon.ico` 404
+  is excluded from the browser console-error assertion.
+- All 211 tests passed with `--test-concurrency=1` and the browser test enabled;
+  none were skipped. `npm run lint`, `npm run build`, and Git whitespace checks
+  passed. The complete test run includes the existing authorization, lock-order,
+  capped-production, concurrency, and atomic transaction coverage. Browser
+  runtime verification used the development server, not a production server.
+- `.env.local` did not target the local database, so its URL was rejected before
+  any connection. Verification instead used a separate ephemeral PostgreSQL
+  18.6 container bound only to `127.0.0.1:55432`, committed migrations, synthetic
+  credentials/accounts, and the restricted `projekt_space_app` identity. Test
+  process settings overrode environment-file values; no environment file,
+  schema file, migration file, or existing database was changed.
+  Test cleanup hooks passed and the ephemeral container was removed afterward.
+  A separate post-build row-count check could not run because Next.js had
+  cleared the temporary credential state; container removal and closed test
+  ports were independently verified. Disposable task files were removed.
+- `npm audit` reports seven affected packages already present in the dependency
+  tree: one critical (`next`), five high (`@prisma/config`, `brace-expansion`,
+  `deepmerge-ts`, `mysql2`, `prisma`), and one moderate (`fast-uri`). It reports no
+  `playwright-core` finding. Dependency remediation is outside this parser fix.
+- This establishes a local parser cause, not the cause of the specific reported
+  Production request or digest `2629603541`. No Production, Neon, or Vercel
+  access, commit, push, or deployment was performed.
+
 ## Open decisions
 
 The following are unresolved decisions, not approved choices:
