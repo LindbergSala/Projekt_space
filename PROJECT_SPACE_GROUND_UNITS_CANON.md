@@ -7,7 +7,7 @@
 
 **Available roster:** 9 planetary units per faction — 7 shared and 2 unique
 
-**Purpose:** Single source of truth for planetary gameplay-unit concepts, battlefield roles, and approved faction presentations established so far.
+**Purpose:** Single source of truth for planetary gameplay-unit concepts, battlefield roles, and faction-level identity boundaries. Previous unit model/image designs have been reset and are not canon.
 
 > This document defines the roster and qualitative roles. Numerical combat statistics remain undecided. The separately approved first production rule for Line Infantry is recorded in [PROJECT_SPACE_RECRUITMENT_CANON.md](PROJECT_SPACE_RECRUITMENT_CANON.md); no other unit costs or production times are fixed.
 
@@ -185,116 +185,9 @@ Orthevan resource production is increased by 10%.
 
 **Visual battlefield expression:** General-purpose frontline rifleman
 
-**Canon image:** `orthevan_standard_infantry_canon.png`
+### Visual model status
 
-### Core concept
-
-A professional human frontline soldier representing the mass-produced backbone of the Directorate military.
-
-This is not an elite Vanguard Exosuit operator, officer, special-forces soldier, or heavily augmented super-soldier.
-
-The soldier should read as one interchangeable part of a massive, highly organized military machine.
-
-### Body and proportions
-
-- Adult human male.
-- Average-to-athletic military build.
-- Slightly heroic tabletop proportions.
-- Strong shoulders and forearms.
-- Reinforced military boots.
-- Hands, boots, weapons, and equipment slightly enlarged for 28–32 mm miniature readability.
-- Practical rather than heroic physique.
-
-### Pose
-
-Disciplined combat-ready standing stance.
-
-- Feet approximately shoulder-width apart.
-- Left foot slightly forward.
-- Torso mostly forward.
-- Service rifle held diagonally across the body.
-- Right hand on pistol grip.
-- Left hand supporting the forward section.
-- Muzzle slightly downward.
-- Controlled low-ready posture.
-- No running, kneeling, victory pose, or exaggerated action.
-
-The pose communicates preparedness, discipline, professionalism, and controlled aggression.
-
-### Helmet and face
-
-- Full military helmet.
-- Compact, industrial, standardized construction.
-- Reinforced forehead plate.
-- Angular side protection.
-- Narrow horizontal recessed optical visor.
-- Small integrated communications module on the right side.
-- Compact armored respirator integrated into the helmet.
-- No exposed hair.
-- No decorative crest.
-- No skull motifs.
-- No excessive glowing optics.
-
-### Armour
-
-Standardized modular infantry combat armour over a reinforced military undersuit.
-
-Main components:
-
-- Segmented chest plate.
-- Small rectangular upper-chest reinforcement.
-- Compact angular shoulder plates.
-- Reinforced forearm guards.
-- Armored gloves.
-- Segmented thigh protection.
-- Knee pads.
-- Reinforced shin guards.
-- Heavy military boots.
-
-The armour is protective but is **not powered armour**.
-
-### Service rifle
-
-A rugged standardized futuristic infantry rifle built for mass production, reliability, and easy maintenance.
-
-Key features:
-
-- Medium overall length.
-- Compact reinforced stock.
-- Rectangular receiver.
-- Clear pistol grip.
-- Thick forward handguard.
-- Short heavy barrel assembly.
-- Small protected optic above the receiver.
-- Detachable box magazine.
-- Simple industrial modular construction.
-
-Avoid oversized scopes, giant barrels, bayonets, energy blades, decorative ornamentation, exposed cable clutter, or fragile thin components.
-
-### Standard equipment
-
-- Two robust ammunition pouches on front-left waist.
-- One utility pouch on front-right waist.
-- Compact medical pouch on rear-left hip.
-- Small rectangular field-tool pouch on rear-right hip.
-- Compact standardized backpack.
-- Cylindrical environmental filter canister on lower-right backpack.
-- Short reinforced communications antenna on upper-right backpack.
-- Simple equipment straps.
-
-Nothing should appear scavenged, personalized, ceremonial, or improvised.
-
-### Locked visual identifiers
-
-- Deeply recessed narrow horizontal visor.
-- Chest plate divided into three large overlapping armour sections.
-- Small matching angular shoulder plates.
-- Central vertical reinforcement ridge on chest.
-- Rectangular modular backpack.
-- Visible robust armour-locking points.
-- Simple Directorate identification mark on upper-left chest:
-  **three short parallel vertical bars inside a rectangular border**.
-- Rifle design visually echoes the armour: rectangular, modular, reliable, industrial.
+Unset. The previous Orthevan Line Infantry model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -305,7 +198,6 @@ Nothing should appear scavenged, personalized, ceremonial, or improvised.
 
 **Unique role:** Elite Breaching Infantry
 
-**Canon image:** `orthevan_vanguard_exosuit_canon.png`
 
 ### Lore role
 
@@ -323,31 +215,9 @@ Typical missions include:
 
 These missions are the unit's approved battlefield roles.
 
-### Approved visual direction
+### Visual model status
 
-The canon design is a clearly heavier evolution of Orthevan infantry equipment.
-
-- Human operator silhouette remains readable.
-- Full helmet with narrow horizontal visor.
-- Significantly enlarged segmented armour.
-- Reinforced torso and limb assemblies.
-- Large mechanical joint structures.
-- Powered lower limbs.
-- Heavy boots and stable stance.
-- Compact standardized backpack/power assembly.
-- Large industrial rifle.
-- Clean, repeatable, engineered geometry.
-- No trophies, robes, ceremonial ornamentation, or improvised components.
-
-The suit must look expensive and powerful while remaining something the Directorate could manufacture, maintain, repair, and deploy systematically.
-
-### Visual relationship to the Line Infantry presentation
-
-The Vanguard should look like it belongs to the same military design family:
-
-**Line Infantry presentation → enlarged armour architecture → powered joints → heavier weapon → greater environmental protection.**
-
-It is elite equipment, but visually still Directorate-standardized rather than individually customized.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -358,7 +228,6 @@ It is elite equipment, but visually still Directorate-standardized rather than i
 
 **Unique role:** Heavy Siege Platform
 
-**Canon image:** `orthevan_siege_strider_canon.png`
 
 ### Lore role
 
@@ -387,24 +256,9 @@ They:
 - Provide mobile heavy support.
 - Help engineers and infantry secure territory behind the advance.
 
-### Approved visual direction
+### Visual model status
 
-The canon design is a compact bipedal heavy walker with a wide, stable silhouette.
-
-Key elements:
-
-- Broad armored central hull.
-- Two heavy articulated legs.
-- Large circular mechanical joints.
-- Oversized reinforced feet.
-- Main forward heavy cannon integrated into the hull.
-- Secondary side-mounted weapon.
-- Large rear/side equipment or power modules.
-- Minimal exposed fragile mechanisms.
-- Rectangular modular Directorate armour panels.
-- Clearly engineered for battlefield maintenance and repeated production.
-
-The machine should feel deliberate, stable, and industrial rather than agile or elegant.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -431,32 +285,9 @@ Zhyreth units are produced 10% faster.
 
 **Visual battlefield expression:** General-purpose frontline combat organism
 
-**Canon image:** `zhyreth_standard_infantry_v1_canon.png`
+### Visual model status
 
-### Approved visual direction
-
-The standard Zhyreth infantry is a lean bipedal combat organism carrying an integrated living ranged weapon.
-
-Key characteristics visible in the approved canon:
-
-- Tall, predatory biological silhouette.
-- Two powerful legs ending in broad clawed feet.
-- Organic torso armour formed from overlapping shell-like structures.
-- Elongated head integrated into the upper carapace.
-- No manufactured helmet.
-- No conventional clothing.
-- No separate metal armour plates.
-- Large living rifle-like symbiotic weapon grown into or carried closely against the arms.
-- Perforated, porous, ribbed, and tendon-like surfaces.
-- Layered biological plating.
-- Visible muscular and organic structural forms.
-- Asymmetry kept controlled enough to preserve a recognizable faction silhouette.
-
-### Design rule
-
-The unit must never look like a human soldier wearing alien armour.
-
-Its body, protection, weapon, and support structures should appear to have **grown together as one biological combat system**.
+Unset. The previous Zhyreth Line Infantry model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -467,7 +298,6 @@ Its body, protection, weapon, and support structures should appear to have **gro
 
 **Unique role:** Rapid Shock Assault
 
-**Canon image:** `zhyreth_razor_beast_v1_canon.png`
 
 ### Lore role
 
@@ -494,23 +324,9 @@ They are best used when the Brood needs a defensive position broken quickly.
 - Tear open enemy lines at close range.
 - Break defensive positions quickly.
 
-### Approved visual direction
+### Visual model status
 
-The canon Razor Beast is a low, broad, heavily muscled predator.
-
-Key elements:
-
-- Forward-hunched body.
-- Extremely powerful legs.
-- Large stabilizing feet.
-- Massive paired blade/claw appendages.
-- Thick layered shoulder and dorsal carapace.
-- Dense organic musculature.
-- Perforated biological armour textures.
-- No conventional hands, weapons, equipment, or manufactured armour.
-- Compact head protected by the surrounding biological shell.
-
-Its silhouette should immediately communicate **speed + mass + cutting power**.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -521,7 +337,6 @@ Its silhouette should immediately communicate **speed + mass + cutting power**.
 
 **Unique role:** Battlefield Control and Disruption
 
-**Canon image:** `zhyreth_spore_caster_v1_canon.png`
 
 ### Lore role
 
@@ -540,23 +355,9 @@ These effects are the unit's approved battlefield roles.
 
 The Spore Caster is therefore both artillery and a biological battlefield-control organism.
 
-### Approved visual direction
+### Visual model status
 
-The canon design is a squat quadrupedal artillery creature.
-
-Key elements:
-
-- Four powerful supporting limbs.
-- Low, stable stance.
-- Large upward-facing organic launch tube/mortar structure.
-- Bulbous biological ammunition or gestation sacs.
-- Perforated spore-producing growths.
-- Heavy torso protected by layered organic shell.
-- Rear-heavy artillery silhouette.
-- No visible mechanical components.
-- No conventional ammunition boxes or crew.
-
-It should look like a creature whose entire anatomy exists to **grow, store, and launch biological ordnance**.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -583,39 +384,9 @@ Nhalorin units gain 10% increased armor.
 
 **Visual battlefield expression:** General-purpose line combat platform
 
-**Canon image:** `nhalorin_standard_infantry_v1_canon.png`
+### Visual model status
 
-### Approved visual direction
-
-The standard Nhalorin infantry is a humanoid autonomous machine construct.
-
-Key elements:
-
-- Tall, narrow mechanical humanoid silhouette.
-- Faceless geometric head.
-- Small recessed sensor apertures.
-- Layered angular torso armour.
-- Long articulated mechanical limbs.
-- Large stable mechanical feet.
-- Compact back-mounted system modules.
-- Heavy two-handed ranged weapon.
-- Minimal ornamentation.
-- Smooth, controlled hard-surface geometry.
-- No cloth, trophies, exposed flesh, or unnecessary decorative parts.
-
-### Design rule
-
-The unit should look like it was designed to remain operational for centuries.
-
-Its visual identity comes from:
-
-- Protected systems.
-- Dense armour placement.
-- Geometric precision.
-- Redundancy.
-- Controlled mechanical simplicity.
-
-It should not look rusty, damaged, improvised, or skeletal merely to communicate age.
+Unset. The previous Nhalorin Line Infantry model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -626,7 +397,6 @@ It should not look rusty, damaged, improvised, or skeletal merely to communicate
 
 **Unique role:** Defensive Anchor
 
-**Canon image:** `nhalorin_aegis_construct_v1_canon.png`
 
 ### Lore role
 
@@ -647,23 +417,9 @@ These assignments, together with absorbing sustained attack, are the unit's appr
 
 They are slow but exceptionally difficult to remove.
 
-### Approved visual direction
+### Visual model status
 
-The canon Aegis is visibly heavier than standard Nhalorin infantry.
-
-Key elements:
-
-- Broad, armored torso.
-- Thick upper limbs.
-- Heavy reinforced leg armour.
-- Large mechanical feet.
-- Deeply protected head/sensor structure.
-- Massive heavy ranged weapon.
-- Large back-mounted redundant system modules.
-- Dense plating with very few vulnerable exposed components.
-- Stable, deliberate stance.
-
-It should read as a **walking defensive emplacement** rather than a fast assault machine.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -674,7 +430,6 @@ It should read as a **walking defensive emplacement** rather than a fast assault
 
 **Unique role:** Premium Anti-Armour Specialist
 
-**Canon image:** `nhalorin_phase_reaper_v1_canon.png`
 
 ### Lore role
 
@@ -697,23 +452,9 @@ Phase Reapers are rarer than conventional Continuum constructs.
 - Eliminate exposed high-value targets.
 - Make conventional protection temporarily irrelevant through spatial instability.
 
-### Approved visual direction
+### Visual model status
 
-The canon Phase Reaper retains the Nhalorin humanoid chassis language but is slimmer and more specialized than the Aegis.
-
-Key elements:
-
-- Tall angular construct silhouette.
-- Faceless sensor head.
-- Long advanced ranged weapon.
-- Extended barrel/emitter structure.
-- Rear-mounted power or phase-control modules.
-- Narrower torso than the Aegis.
-- Long mechanical limbs.
-- Precise, restrained hard-surface design.
-- No decorative energy effects or ornamental technology.
-
-The weapon should visually communicate **precision and advanced function**, not brute-force mass.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -749,33 +490,9 @@ Draskyr units deal 10% increased damage.
 
 **Visual battlefield expression:** General-purpose aggressive frontline fighter
 
-**Canon image:** `draskyr_standard_infantry_canon.png`
+### Visual model status
 
-### Approved visual direction
-
-The standard Draskyr infantry is already substantially more individualized and physically imposing than the standardized Orthevan soldier.
-
-Key elements:
-
-- Stocky, powerful humanoid build.
-- Heavy layered armour assembled from visibly different components.
-- Broad shoulder silhouette.
-- Wrapped cloth, straps, plates, and trophy-like details.
-- Large industrial ranged weapon.
-- Visible cables and mechanical attachments.
-- Large backpack with mixed tanks/modules.
-- Irregular armour edges.
-- Functional wear and layered repairs.
-- Strong asymmetry.
-- Aggressive, grounded stance.
-
-### Design rule
-
-The unit should look assembled, modified, repaired, and personalized across multiple campaigns.
-
-Nothing needs to match.
-
-Everything needs to work.
+Unset. The previous Draskyr Line Infantry model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -786,7 +503,6 @@ Everything needs to work.
 
 **Unique role:** Heavy Close-Range Shock Assault
 
-**Canon image:** `draskyr_scrap_brute_canon.png`
 
 ### Lore role
 
@@ -808,24 +524,9 @@ Possible weapons include:
 - Modified industrial equipment.
 - Anything that works.
 
-### Approved visual direction
+### Visual model status
 
-The canon Scrap Brute is the heaviest Draskyr infantry design.
-
-Key elements:
-
-- Massive powered exoskeletal frame.
-- Very broad shoulders.
-- Heavy mismatched armour slabs.
-- Reinforced mechanical legs.
-- Large backpack/reactor assembly.
-- Exposed hoses, pistons, and cabling.
-- Large industrial impact/cutting weapon.
-- Multiple attached salvage modules.
-- Highly asymmetric construction.
-- Trophy-like and repair-derived surface detail.
-
-The unit should feel like a **walking accumulation of victories, repairs, stolen machinery, and raw force**.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -836,7 +537,6 @@ The unit should feel like a **walking accumulation of victories, repairs, stolen
 
 **Unique role:** Fast Deep-Strike / Support Hunter
 
-**Canon image:** `draskyr_rift_raider_canon.png`
 
 ### Lore role
 
@@ -855,22 +555,9 @@ These targets, together with flanking, boarding, and rapid penetration, define t
 
 Their equipment may use compact propulsion systems, gravitic boosters, or other mobility systems modified by Forge-Takers.
 
-### Approved visual direction
+### Visual model status
 
-The canon Rift Raider is lighter and more mobile than the Scrap Brute while remaining unmistakably Draskyr.
-
-Key elements:
-
-- Forward-leaning aggressive stance.
-- Lighter but still layered irregular armour.
-- Compact ranged weapon.
-- Large mobility/propulsion modules on the back.
-- Visible mechanical components and cables.
-- Reinforced legs suited to rapid movement.
-- Strong asymmetry.
-- Trophy and repair details retained but with less bulk than the Scrap Brute.
-
-Its silhouette should communicate **speed, violence, and improvised mobility**.
+Unset. The previous approved model/image and its exact visual construction have been discarded. A new model will be designed from scratch.
 
 ---
 
@@ -921,31 +608,11 @@ The four faction-specific Line Infantry presentation sections describe visual an
 
 ---
 
-# 6. CANON IMAGE FILES
+# 6. CANON IMAGE FILES — RESET
 
-## Orthevan Directorate
+There are currently **no canon unit image files** for any launch faction.
 
-- `orthevan_standard_infantry_canon.png`
-- `orthevan_vanguard_exosuit_canon.png`
-- `orthevan_siege_strider_canon.png`
-
-## Zhyreth Brood
-
-- `zhyreth_standard_infantry_v1_canon.png`
-- `zhyreth_razor_beast_v1_canon.png`
-- `zhyreth_spore_caster_v1_canon.png`
-
-## Nhalorin Continuum
-
-- `nhalorin_standard_infantry_v1_canon.png`
-- `nhalorin_aegis_construct_v1_canon.png`
-- `nhalorin_phase_reaper_v1_canon.png`
-
-## Draskyr Clans
-
-- `draskyr_standard_infantry_canon.png`
-- `draskyr_scrap_brute_canon.png`
-- `draskyr_rift_raider_canon.png`
+All previously referenced faction unit images and their exact model designs have been discarded. New unit images may be created later and become canon only after explicit approval.
 
 ---
 
@@ -989,6 +656,8 @@ The following are **not yet defined in this document** and should not be treated
 - Alternate weapon loadouts.
 - Veteran variants.
 - Officer variants.
+- Exact unit model designs.
+- Canon unit images.
 
 Those systems should be added only when they are deliberately designed and approved.
 
